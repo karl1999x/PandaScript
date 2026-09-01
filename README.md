@@ -1,4 +1,13 @@
 ------------------------------------------------------------------
+
+p style="text-align: center;">
+<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO PIDE KEY</big></span>
+
+
+<p style="text-align: center;">
+<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>VERIFICACIÓN DE KEY REMOVIDA</big></span>
+
+
 # **<font color="#FF4500">🐼 PandaScript 🐼</font>** ## **<font color="#1E90FF">By PandaHL001</font>** 😉 
 [https://t.me/PandaHL001](https://t.me/PandaHL001)
 
