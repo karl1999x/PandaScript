@@ -1028,13 +1028,8 @@ install_completed_libev
 qr_generate_libev
 fi
 echo
-<<<<<<< HEAD
 echo "ChumoGH - Shadowsocks"
 echo "t.me/ChumoGH"
-=======
-echo "joaquinH2 - Shadowsocks"
-echo "t.me/joaquinH2"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 echo
 }
 install_cleanup(){

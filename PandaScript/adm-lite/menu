@@ -28,11 +28,7 @@ rm -f /etc/folteto
 			MENSAJE+=" HORA : $(printf '%(%D-%H:%M:%S)T')\n"
 			MENSAJE+=" $(msg -bar4)\n"
 			MENSAJE+="       ${rUlq} Bot generador de key ${rUlq}\n"
-<<<<<<< HEAD
 			MENSAJE+="           ${pUn5A} By @ChumoGH ${pUn5A} \n"
-=======
-			MENSAJE+="           ${pUn5A} By @joaquinH2 ${pUn5A} \n"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 			MENSAJE+=" $(msg -bar4)\n"	
 			curl -s --max-time 10 -d "chat_id=$ID&disable_web_page_preview=1&text=$(echo -e "$MENSAJE")" $urlBOT &>/dev/null 	
 exit && exit
@@ -138,11 +134,7 @@ trofix(){
 source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/SCRIPTS/mod-v2ray.sh)
 }
 autoop(){
-<<<<<<< HEAD
 [[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New ChumoGH${TTcent}VPS ${TTfin}      \033[0m"
-=======
-[[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New joaquinH2${TTcent}VPS ${TTfin}      \033[0m"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 echo -e "\033[1;37m  ${RRini} Reseller : $(cat < /bin/ejecutar/menu_credito) 2022 ${RRfin}\033[0m"
 msg -bar1 
 echo -e "${cor[2]} \033[1;32mESTA FUNCION AGREGARA EN EL CRONTAB UN AUTOEJECUCION"
@@ -162,11 +154,7 @@ clear&&clear && echo -e "${cor[0]}"
 return
 ;;
 1)clear&&clear
-<<<<<<< HEAD
 [[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New ChumoGH${TTcent}VPS ${TTfin}      \033[0m"
-=======
-[[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New joaquinH2${TTcent}VPS ${TTfin}      \033[0m"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 echo -e "\033[1;37m  ${RRini} Reseller : $(cat < /bin/ejecutar/menu_credito) 2022 ${RRfin}\033[0m"
 echo " Desabilitando Servicios de AutOptimizacion" && sed -i "/ejecutar/d" /etc/crontab
 echo -ne " VERIFICANDO SISTEMA......"
@@ -618,11 +606,7 @@ return
 
 cambiopass () {
 clear&&clear
-<<<<<<< HEAD
 [[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New ChumoGH${TTcent}VPS ${TTfin}      \033[0m"
-=======
-[[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New joaquinH2${TTcent}VPS ${TTfin}      \033[0m"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 echo -e "\033[1;37m  ${RRini} Reseller : $(cat < /bin/ejecutar/menu_credito) 2022 ${RRfin}\033[0m"
 msg -bar1 
 echo -e ""
@@ -655,11 +639,7 @@ rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
 wget -q -O /etc/nginx/nginx.conf "https://raw.githubusercontent.com/karl1999x/PandaScript/main/config/nginx.conf"
 [[ ! -d /var/www/html ]] && mkdir -p /var/www/html
-<<<<<<< HEAD
 [[ ! -e /var/www/html/index.html ]] && echo "<pre>Setup by @ChumoGH</pre>" > /var/www/html/index.html
-=======
-[[ ! -e /var/www/html/index.html ]] && echo "<pre>Setup by @joaquinH2</pre>" > /var/www/html/index.html
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 wget -O /etc/nginx/conf.d/vps.conf "https://raw.githubusercontent.com/karl1999x/PandaScript/main/config/vps.conf"
 /etc/init.d/nginx restart
 }
@@ -695,11 +675,7 @@ msg -bar1
 /bin/killssh && echo " EJECUCION EXTOSA"
 msg -bar1
 echo -e '[Unit]
-<<<<<<< HEAD
 Description=KillLogin Service by @ChumoGH
-=======
-Description=KillLogin Service by @joaquinH2
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 After=network.target
 StartLimitIntervalSec=0
 
@@ -806,11 +782,7 @@ case $ppp in
 	;;
 	1)
 		clear
-<<<<<<< HEAD
 		[[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New ChumoGH${TTcent}VPS ${TTfin}      \033[0m"
-=======
-		[[ -e /root/name ]] && figlet -p -f smslant < /root/name | lolcat || echo -e "\033[7;49;35m    ${TTini} New joaquinH2${TTcent}VPS ${TTfin}      \033[0m"
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 		echo -e "\033[1;37m  ${RRini} Reseller : $(cat < /bin/ejecutar/menu_credito) 2022 ${RRfin}\033[0m"
 		msg -bar1 
 		echo -e "
@@ -946,11 +918,7 @@ fun_limpram() {
 	killall kswapd0 > /dev/null 2>&1
 	killall tcpdump > /dev/null 2>&1
 	killall ksoftirqd > /dev/null 2>&1
-<<<<<<< HEAD
 	#echo -e "@ChumoGH " > /var/log/auth.log
-=======
-	#echo -e "@joaquinH2 " > /var/log/auth.log
->>>>>>> 19ba2a11554f9540fb5920c6a1168777ee8a521e
 	systemctl restart rsyslog.service
 	systemctl restart systemd-journald.service
 	service dropbear stop > /dev/null 2>&1
