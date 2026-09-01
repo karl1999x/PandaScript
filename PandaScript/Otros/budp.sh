@@ -490,8 +490,4 @@ BadVPN () {
     enter
 }
 clean_check
-# Llama a la función principal BadVPN al final del script para ejecutarla
-BadVPN#!/bin/bash
-exec /root/adm-lite/menu "$@"
-#!/bin/bash
-exec /root/adm-lite/menu "$@"
+BadVPN
