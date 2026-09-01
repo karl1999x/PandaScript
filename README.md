@@ -1,6 +1,6 @@
 ------------------------------------------------------------------
 
-<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO NECESITA PKEY</big></span>
+<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO NECESITA KEY</big></span>
 
 
 <p style="text-align: center;">
