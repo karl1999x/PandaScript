@@ -1,0 +1,773 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+ORANGE='\033[0;33m'
+BLUE='\033[0;34m'
+LBLUE='\033[1;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[38;5;129m'   # Violeta PandaScript (antes cian)
+WHITE='\033[1;37m'
+GRAY='\033[0;90m'
+BOLD='\033[1m'
+BG_BLUE='\033[44m'
+NC='\033[0m'
+
+NUMC="${CYAN}"
+TXTC="${LBLUE}"
+
+OPT_BRACKET='\033[0;35m'
+OPT_NUM='\033[0;36m'
+OPT_ARROW='\033[0;31m'
+OPT_TEXT='\033[1;37m'
+opt_line() {
+    local num="$1" text="$2"
+    echo -e " ${OPT_BRACKET}[${OPT_NUM}${num}${OPT_BRACKET}]${OPT_ARROW} >${OPT_TEXT} ${text}${NC}"
+}
+
+TTini='=====>>►► 🐼'
+TTfin='🐼 ◄◄<<====='
+BAR_WIDTH=43
+BARC='\033[0;34m'
+draw_bar() { echo -e "${BARC}$(printf '%.0s━' $(seq 1 "${BAR_WIDTH}"))${NC}"; }
+INSTALL_DIR="/etc/hcr-server"
+BINARY_PATH="${INSTALL_DIR}/hcr-server"
+BINARY_URL="https://www.dropbox.com/scl/fi/o8q0zs14a7xy03sk08a8j/hcr-server?rlkey=no7u3nggl0tw7i08rnadrao61&st=mb5b2zrg&dl=1"
+PORTS_FILE="${INSTALL_DIR}/ports.conf"
+DEFAULT_PORT="22"
+DEFAULT_TARGET="127.0.0.1:22"
+DEFAULT_TRANSPORT="plain"
+DEFAULT_MAX_FRAME="16384"
+MAX_FRAME_LIMIT=16384
+DEFAULT_POLL_SECONDS="6"
+SERVICE_PREFIX="hcr"
+SCRIPT_VERSION="0.0.6-P4"
+ok()   { echo -e "${GREEN}[✓]${NC} $1"; }
+err()  { echo -e "${RED}[✗]${NC} $1"; }
+info() { echo -e "${CYAN}[i]${NC} $1"; }
+warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+
+pause() {
+    echo
+    echo -e "${GRAY}Presiona ENTER para continuar...${NC}"
+    read -r
+}
+
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+        err "Este script debe ejecutarse como root"
+        exit 1
+    fi
+}
+
+ensure_dirs() {
+    mkdir -p "${INSTALL_DIR}"
+    touch "${PORTS_FILE}"
+    chmod 600 "${PORTS_FILE}" 2>/dev/null || true
+    reconcile_ports
+}
+reconcile_ports() {
+    local unit_file port execstart target transport frame poll
+
+    for unit_file in /etc/systemd/system/${SERVICE_PREFIX}-*.service; do
+        [[ -e "$unit_file" ]] || continue
+
+        port=$(basename "$unit_file" .service)
+        port="${port#${SERVICE_PREFIX}-}"
+        [[ "$port" =~ ^[0-9]+$ ]] || continue
+        port_exists "$port" && continue
+
+        execstart=$(grep -m1 '^ExecStart=' "$unit_file" 2>/dev/null) || true
+        [[ -z "$execstart" ]] && continue
+
+        target=$(grep -oE -- '--target [^ ]+' <<< "$execstart" | awk '{print $2}') || true
+        transport=$(grep -oE -- '--transport [^ ]+' <<< "$execstart" | awk '{print $2}') || true
+        frame=$(grep -oE -- '--max-download-frame [^ ]+' <<< "$execstart" | awk '{print $2}') || true
+        poll=$(grep -oE -- '--download-poll-timeout [^ ]+' <<< "$execstart" | awk '{print $2}') || true
+        poll="${poll%s}"
+
+        target="${target:-$DEFAULT_TARGET}"
+        transport="${transport:-$DEFAULT_TRANSPORT}"
+        frame="${frame:-$DEFAULT_MAX_FRAME}"
+        poll="${poll:-$DEFAULT_POLL_SECONDS}"
+
+        add_port_config "$port" "$transport" "$target" "$frame" "$poll"
+        warn "Puerto $port re-registrado (servicio existente encontrado en el sistema)"
+    done
+}
+
+
+print_banner() {
+    clear
+    draw_bar
+    echo -e "${BG_BLUE}${WHITE}${BOLD}   ${TTini} PandaScript ${TTfin}   ${NC}"
+    draw_bar
+}
+
+section_title() {
+    echo -e "${BG_BLUE}${WHITE}${BOLD} $1 ${NC}"
+    echo
+}
+list_ports() {
+    if [[ ! -s "${PORTS_FILE}" ]]; then
+        return
+    fi
+    while IFS='|' read -r port transport target frame poll; do
+        [[ -z "$port" ]] && continue
+        echo "$port"
+    done < "${PORTS_FILE}"
+}
+
+port_exists() {
+    grep -q "^${1}|" "${PORTS_FILE}" 2>/dev/null
+}
+
+get_port_line() {
+    grep "^${1}|" "${PORTS_FILE}" 2>/dev/null | head -1
+}
+
+add_port_config() {
+    local port="$1" transport="${2:-$DEFAULT_TRANSPORT}" target="${3:-$DEFAULT_TARGET}"
+    local frame="${4:-$DEFAULT_MAX_FRAME}" poll="${5:-$DEFAULT_POLL_SECONDS}"
+    sed -i "/^${port}|/d" "${PORTS_FILE}" 2>/dev/null || true
+    echo "${port}|${transport}|${target}|${frame}|${poll}" >> "${PORTS_FILE}"
+}
+
+remove_port_config() {
+    sed -i "/^${1}|/d" "${PORTS_FILE}" 2>/dev/null || true
+}
+
+service_name() { echo "${SERVICE_PREFIX}-${1}.service"; }
+unit_path()    { echo "/etc/systemd/system/$(service_name "$1")"; }
+VALIDATION_ERROR=""
+
+validate_port_format() {
+    local p="$1"
+    if ! [[ "$p" =~ ^[0-9]+$ ]]; then
+        VALIDATION_ERROR="El puerto debe ser un numero entero (sin letras ni simbolos)"
+        return 1
+    fi
+    if (( 10#$p < 1 || 10#$p > 65535 )); then
+        VALIDATION_ERROR="Puerto fuera de rango: debe estar entre 1 y 65535"
+        return 1
+    fi
+    return 0
+}
+
+validate_port_available() {
+    local p="$1"
+    if port_exists "$p"; then
+        VALIDATION_ERROR="El puerto $p ya esta configurado en este script (usa Editar o Eliminar)"
+        return 1
+    fi
+    if ss -tln 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${p}\$"; then
+        VALIDATION_ERROR="El puerto $p ya esta en uso por otro proceso en el sistema"
+        return 1
+    fi
+    return 0
+}
+
+validate_frame() {
+    local f="$1"
+    if ! [[ "$f" =~ ^[0-9]+$ ]]; then
+        VALIDATION_ERROR="Max frame debe ser un numero entero (ej: 16384)"
+        return 1
+    fi
+    if (( 10#$f < 1 )); then
+        VALIDATION_ERROR="Max frame debe ser mayor a 0"
+        return 1
+    fi
+    if (( 10#$f > MAX_FRAME_LIMIT )); then
+        VALIDATION_ERROR="Max frame no admitido: el protocolo HCR soporta como maximo ${MAX_FRAME_LIMIT} bytes"
+        return 1
+    fi
+    return 0
+}
+
+validate_poll() {
+    local p="$1"
+    if ! [[ "$p" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        VALIDATION_ERROR="Poll timeout debe ser solo un numero (ej: 6). No escribas la 's', se agrega sola"
+        return 1
+    fi
+    if awk "BEGIN{exit !($p <= 0)}"; then
+        VALIDATION_ERROR="Poll timeout debe ser mayor a 0"
+        return 1
+    fi
+    return 0
+}
+diagnose_service_error() {
+    local port="$1"
+    local log
+    log=$(journalctl -u "$(service_name "$port")" -n 20 --no-pager 2>/dev/null)
+
+    if echo "$log" | grep -qi "address already in use"; then
+        err "Puerto $port: la direccion ya esta en uso (otro proceso la tiene tomada)"
+    elif echo "$log" | grep -qi "exceeds the protocol maximum"; then
+        err "Puerto $port: el max-download-frame configurado supera el maximo del protocolo (${MAX_FRAME_LIMIT})"
+    elif echo "$log" | grep -qi "permission denied"; then
+        err "Puerto $port: permiso denegado (revisa permisos del binario y que corras como root)"
+    elif echo "$log" | grep -qi "no such file or directory"; then
+        err "Puerto $port: no se encontro un archivo requerido (revisa target, certificados TLS o la ruta del binario)"
+    elif echo "$log" | grep -qi "flag provided but not defined\|invalid value\|invalid argument"; then
+        local bad_flag
+        bad_flag=$(echo "$log" | grep -oi "flag provided but not defined: -[a-zA-Z-]*" | head -1)
+        err "Puerto $port: argumento invalido al iniciar el binario ${bad_flag:+(${bad_flag})}"
+    elif echo "$log" | grep -qi "certificate\|tls"; then
+        err "Puerto $port: problema con el certificado TLS (verifica fullchain.pem / privkey.pem)"
+    else
+        err "Puerto $port: el servicio no arranco. Ultimas lineas del log:"
+        echo "$log" | tail -5 | sed 's/^/    /'
+    fi
+}
+create_unit() {
+    local port="$1" transport="$2" target="$3" frame="$4" poll_num="$5"
+    local unit="$(unit_path "$port")"
+    local tls_args=""
+    local poll="${poll_num}s"
+
+    if [[ "$transport" == "tls" || "$transport" == "auto" ]]; then
+        if [[ -f "${INSTALL_DIR}/fullchain.pem" && -f "${INSTALL_DIR}/privkey.pem" ]]; then
+            tls_args=" --tls-cert ${INSTALL_DIR}/fullchain.pem --tls-key ${INSTALL_DIR}/privkey.pem"
+        else
+            warn "Transport $transport requiere certificados. Se usara plain."
+            transport="plain"
+        fi
+    fi
+
+    cat > "${unit}" <<EOF
+[Unit]
+Description=HCR relay on port ${port}
+Documentation=file:${INSTALL_DIR}/README.md
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=${INSTALL_DIR}
+ExecStart=${BINARY_PATH} --listen :${port} --target ${target} --transport ${transport}${tls_args} --max-download-frame ${frame} --download-poll-timeout ${poll}
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=${INSTALL_DIR}
+LimitNOFILE=4096
+LimitCORE=0
+TasksMax=512
+MemoryMax=384M
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hcr-${port}
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    chmod 644 "${unit}"
+}
+
+start_port() {
+    systemctl daemon-reload
+    systemctl enable --now "$(service_name "$1")" >/dev/null 2>&1
+}
+
+stop_port() {
+    systemctl disable --now "$(service_name "$1")" >/dev/null 2>&1 || true
+}
+
+remove_unit() {
+    local unit="$(unit_path "$1")"
+    systemctl disable --now "$(service_name "$1")" >/dev/null 2>&1 || true
+    rm -f "${unit}"
+    systemctl daemon-reload
+}
+
+is_port_running() {
+    systemctl is-active --quiet "$(service_name "$1")" 2>/dev/null
+}
+
+is_port_listening() {
+    ss -tlnp 2>/dev/null | grep -q ":${1} "
+}
+print_ports_banner() {
+    local ports
+    ports=$(list_ports)
+
+    echo -e "${WHITE}${BOLD} Puertos activos:${NC}"
+
+    if [[ -z "$ports" ]]; then
+        echo -e "  ${GRAY}(ninguno, usa [02] para crear uno)${NC}"
+        draw_bar
+        echo
+        return
+    fi
+
+    local line="" count=0 status total=0 up=0
+    for p in $ports; do
+        if is_port_running "$p"; then
+            status="${GREEN}●ON ${NC}"
+            up=$((up + 1))
+        else
+            status="${RED}●OFF${NC}"
+        fi
+        line+="  ${NUMC}${BOLD}${p}${NC} ${status}"
+        count=$((count + 1))
+        total=$((total + 1))
+        if (( count % 4 == 0 )); then
+            echo -e "$line"
+            line=""
+        fi
+    done
+    [[ -n "$line" ]] && echo -e "$line"
+    draw_bar
+    echo -e "  ${GRAY}Total: ${total}  |  ${GREEN}Activos: ${up}${GRAY}  |  Detenidos: $((total - up))${NC}"
+    draw_bar
+    echo
+}
+download_binary() {
+    info "Descargando hcr-server..."
+    local tmp="/tmp/hcr-server.$$"
+    if curl -fsSL -L -o "${tmp}" "${BINARY_URL}"; then
+        chmod +x "${tmp}"
+        if "${tmp}" -version 2>/dev/null | grep -q "hcr-server version"; then
+            mv -f "${tmp}" "${BINARY_PATH}"
+            chown root:root "${BINARY_PATH}"
+            chmod 755 "${BINARY_PATH}"
+            ok "Binario instalado/actualizado correctamente"
+            "${BINARY_PATH}" -version
+            return 0
+        else
+            rm -f "${tmp}"
+            err "El archivo descargado no es un binario hcr-server valido"
+            return 1
+        fi
+    else
+        rm -f "${tmp}"
+        err "Error al descargar el binario (revisa conectividad o la URL)"
+        return 1
+    fi
+}
+
+install_binary() {
+    print_banner
+    section_title "INSTALAR / ACTUALIZAR HCR-SERVER"
+    ensure_dirs
+    if [[ -x "${BINARY_PATH}" ]]; then
+        info "Binario actual:"
+        "${BINARY_PATH}" -version 2>/dev/null || true
+        echo
+        read -rp "$(echo -e "${TXTC}¿Deseas re-descargar/actualizar? (s/N): ${NC}")" resp
+        if [[ "${resp,,}" != "s" && "${resp,,}" != "si" ]]; then
+            ok "Se mantiene el binario actual"
+            pause
+            return
+        fi
+    fi
+    download_binary
+    pause
+}
+
+PRESET_NAMES=("Rapido"     "Balanceado" "Estable")
+PRESET_FRAMES=(2000        4000         6000)
+PRESET_POLLS=(4            5            6)
+
+print_presets() {
+    echo -e "${WHITE}${BOLD}Elegí una opción predeterminada:${NC}"
+    echo -e "$(opt_line "1" "Opcion 1")"
+    echo -e "$(opt_line "2" "Opcion 2")"
+    echo -e "$(opt_line "3" "Opcion 3")"
+    echo
+    echo -e "  ${GRAY}Podes probar otra opcion si la notas lenta o inestable,${NC}"
+    echo -e "  ${GRAY}o personalizar los valores vos mismo.${NC}"
+    echo
+    echo -e "$(opt_line "4" "Personalizar valores")"
+    echo -e "$(opt_line "0" "Volver atras")"
+}
+ask_common_params() {
+    echo
+    print_presets
+    read -rp "$(echo -e "${TXTC}Opcion: ${NC}")" P_PRESET
+
+    case "$P_PRESET" in
+        1|2|3)
+            local idx=$((P_PRESET - 1))
+            P_TRANSPORT="$DEFAULT_TRANSPORT"
+            P_TARGET="$DEFAULT_TARGET"
+            P_FRAME="${PRESET_FRAMES[$idx]}"
+            P_POLL="${PRESET_POLLS[$idx]}"
+            info "Aplicando Opcion ${P_PRESET}..."
+            ;;
+        4)
+            echo
+            echo -e "${TXTC}Transport disponible:${NC} ${GREEN}plain${NC} (recomendado) | tls | auto"
+            read -rp "$(echo -e "${TXTC}Transport [${DEFAULT_TRANSPORT}]: ${NC}")" P_TRANSPORT
+            P_TRANSPORT=${P_TRANSPORT:-$DEFAULT_TRANSPORT}
+            case "$P_TRANSPORT" in
+                plain|tls|auto) ;;
+                *) VALIDATION_ERROR="Transport no admitido: usa plain, tls o auto"; return 1 ;;
+            esac
+
+            read -rp "$(echo -e "${TXTC}Target (SSH local) [${DEFAULT_TARGET}]: ${NC}")" P_TARGET
+            P_TARGET=${P_TARGET:-$DEFAULT_TARGET}
+
+            read -rp "$(echo -e "${TXTC}Max download frame [${DEFAULT_MAX_FRAME}]: ${NC}")" P_FRAME
+            P_FRAME=${P_FRAME:-$DEFAULT_MAX_FRAME}
+            if ! validate_frame "$P_FRAME"; then
+                return 1
+            fi
+
+            read -rp "$(echo -e "${TXTC}Poll timeout en segundos, solo numero [${DEFAULT_POLL_SECONDS}]: ${NC}")" P_POLL
+            P_POLL=${P_POLL:-$DEFAULT_POLL_SECONDS}
+            if ! validate_poll "$P_POLL"; then
+                return 1
+            fi
+            ;;
+        0)
+            return 2
+            ;;
+        *)
+            VALIDATION_ERROR="Opcion invalida: elegi 0, 1, 2, 3 o 4"
+            return 1
+            ;;
+    esac
+    return 0
+}
+provision_port() {
+    local port="$1" transport="$2" target="$3" frame="$4" poll="$5"
+    add_port_config "$port" "$transport" "$target" "$frame" "$poll"
+    create_unit "$port" "$transport" "$target" "$frame" "$poll"
+    start_port "$port"
+    sleep 1
+    if is_port_running "$port" && is_port_listening "$port"; then
+        ok "Puerto $port iniciado correctamente (transport: $transport)"
+        return 0
+    else
+        diagnose_service_error "$port"
+        return 1
+    fi
+}
+menu_add_port() {
+    print_banner
+    section_title "INICIAR / AGREGAR PUERTO"
+
+    if [[ ! -x "${BINARY_PATH}" ]]; then
+        err "El binario no esta instalado. Usa la opcion [01] primero."
+        pause
+        return
+    fi
+
+    read -rp "$(echo -e "${TXTC}Puerto a usar (1-65535): ${NC}")" port
+    if ! validate_port_format "$port"; then
+        err "$VALIDATION_ERROR"
+        pause
+        return
+    fi
+
+    if port_exists "$port"; then
+        warn "El puerto $port ya esta configurado."
+        if is_port_running "$port"; then
+            info "Ya esta en ejecucion."
+            pause
+            return
+        fi
+        read -rp "$(echo -e "${TXTC}¿Reiniciar el servicio existente? (s/N): ${NC}")" resp
+        if [[ "${resp,,}" == "s" || "${resp,,}" == "si" ]]; then
+            local line transport target frame poll
+            line=$(get_port_line "$port")
+            IFS='|' read -r _ transport target frame poll <<< "$line"
+            create_unit "$port" "$transport" "$target" "$frame" "$poll"
+            start_port "$port"
+            sleep 1
+            if is_port_running "$port"; then
+                ok "Puerto $port reiniciado correctamente"
+            else
+                diagnose_service_error "$port"
+            fi
+        fi
+        pause
+        return
+    fi
+
+    if ! validate_port_available "$port"; then
+        err "$VALIDATION_ERROR"
+        pause
+        return
+    fi
+
+    echo
+    local rc=0
+    ask_common_params || rc=$?
+    if [[ $rc -eq 2 ]]; then
+        pause
+        return
+    elif [[ $rc -ne 0 ]]; then
+        err "$VALIDATION_ERROR"
+        pause
+        return
+    fi
+
+    echo
+    info "Creando instancia en puerto $port ..."
+    provision_port "$port" "$P_TRANSPORT" "$P_TARGET" "$P_FRAME" "$P_POLL"
+    pause
+}
+menu_stop_port() {
+    print_banner
+    section_title "DETENER / REACTIVAR PUERTO"
+    print_ports_banner
+
+    local ports
+    ports=$(list_ports)
+    if [[ -z "$ports" ]]; then
+        pause
+        return
+    fi
+
+    read -rp "$(echo -e "${TXTC}Puerto: ${NC}")" port
+    if ! port_exists "$port"; then
+        err "El puerto $port no esta configurado en este script"
+        pause
+        return
+    fi
+
+    if is_port_running "$port"; then
+        stop_port "$port"
+        ok "Puerto $port detenido"
+    else
+        start_port "$port"
+        sleep 1
+        if is_port_running "$port"; then
+            ok "Puerto $port reactivado"
+        else
+            diagnose_service_error "$port"
+        fi
+    fi
+    pause
+}
+menu_edit_port() {
+    print_banner
+    section_title "EDITAR PUERTO"
+    print_ports_banner
+
+    local ports
+    ports=$(list_ports)
+    [[ -z "$ports" ]] && { pause; return; }
+
+    read -rp "$(echo -e "${TXTC}Puerto a editar: ${NC}")" old_port
+    if ! port_exists "$old_port"; then
+        err "El puerto $old_port no esta configurado en este script"
+        pause
+        return
+    fi
+
+    local line cur_transport cur_target cur_frame cur_poll
+    line=$(get_port_line "$old_port")
+    IFS='|' read -r _ cur_transport cur_target cur_frame cur_poll <<< "$line"
+
+    echo
+    read -rp "$(echo -e "${TXTC}Nuevo puerto [${old_port}]: ${NC}")" new_port
+    new_port=${new_port:-$old_port}
+
+    if [[ "$new_port" != "$old_port" ]]; then
+        if ! validate_port_format "$new_port"; then
+            err "$VALIDATION_ERROR"
+            pause
+            return
+        fi
+        if ! validate_port_available "$new_port"; then
+            err "$VALIDATION_ERROR"
+            pause
+            return
+        fi
+    fi
+
+    read -rp "$(echo -e "${TXTC}Transport [${cur_transport}]: ${NC}")" transport
+    transport=${transport:-$cur_transport}
+    case "$transport" in
+        plain|tls|auto) ;;
+        *) err "Transport no admitido: usa plain, tls o auto"; pause; return ;;
+    esac
+
+    read -rp "$(echo -e "${TXTC}Target [${cur_target}]: ${NC}")" target
+    target=${target:-$cur_target}
+
+    read -rp "$(echo -e "${TXTC}Max frame [${cur_frame}]: ${NC}")" frame
+    frame=${frame:-$cur_frame}
+    if ! validate_frame "$frame"; then
+        err "$VALIDATION_ERROR"
+        pause
+        return
+    fi
+
+    read -rp "$(echo -e "${TXTC}Poll timeout en segundos, solo numero [${cur_poll}]: ${NC}")" poll
+    poll=${poll:-$cur_poll}
+    if ! validate_poll "$poll"; then
+        err "$VALIDATION_ERROR"
+        pause
+        return
+    fi
+
+    stop_port "$old_port"
+    remove_unit "$old_port"
+    remove_port_config "$old_port"
+
+    info "Aplicando cambios en puerto $new_port ..."
+    if provision_port "$new_port" "$transport" "$target" "$frame" "$poll"; then
+        ok "Puerto actualizado: $old_port -> $new_port"
+    fi
+    pause
+}
+menu_delete_port() {
+    print_banner
+    section_title "ELIMINAR PUERTO"
+    print_ports_banner
+
+    local ports
+    ports=$(list_ports)
+    [[ -z "$ports" ]] && { pause; return; }
+
+    read -rp "$(echo -e "${TXTC}Puerto a eliminar: ${NC}")" port
+    if ! port_exists "$port"; then
+        err "El puerto $port no esta configurado en este script"
+        pause
+        return
+    fi
+
+    read -rp "$(echo -e "${TXTC}¿Seguro que deseas eliminar el puerto $port? (s/N): ${NC}")" resp
+    if [[ "${resp,,}" != "s" && "${resp,,}" != "si" ]]; then
+        info "Cancelado"
+        pause
+        return
+    fi
+
+    stop_port "$port"
+    remove_unit "$port"
+    remove_port_config "$port"
+    ok "Puerto $port eliminado completamente"
+    pause
+}
+format_log_line() {
+    local line="$1"
+    local time rest level msg extra color
+
+    time=$(awk '{print $3}' <<< "$line")
+    rest=$(cut -d' ' -f6- <<< "$line")
+
+    if [[ "$rest" == \{* ]]; then
+        level=$(grep -oE '"level":"[^"]*"' <<< "$rest" | head -1 | cut -d'"' -f4) || true
+        msg=$(grep -oE '"msg":"[^"]*"' <<< "$rest" | head -1 | cut -d'"' -f4) || true
+        extra=$(grep -oE '"(address|transport|count|error)":"?[^",}]*"?' <<< "$rest"                 | sed 's/"//g' | paste -sd' ' - 2>/dev/null) || true
+        [[ -z "$msg" ]] && msg="$rest"
+        [[ -n "$extra" ]] && msg="${msg} ${GRAY}(${extra})${NC}"
+    elif [[ "$rest" =~ (ERROR|WARN|WARNING|INFO)[[:space:]] ]]; then
+        level=$(grep -oE 'ERROR|WARNING|WARN|INFO' <<< "$rest" | head -1) || true
+        msg=$(sed -E 's/^[0-9\/]+ [0-9:]+ (ERROR|WARNING|WARN|INFO) //' <<< "$rest") || true
+    else
+        level="SYS"
+        msg="$rest"
+    fi
+
+    case "$level" in
+        ERROR) color="${RED}" ;;
+        WARN|WARNING) color="${YELLOW}" ;;
+        INFO) color="${GREEN}" ;;
+        *) level="SYS"; color="${GRAY}" ;;
+    esac
+
+    echo -e "${GRAY}${time}${NC} ${color}${BOLD}${level}${NC} ${WHITE}${msg}${NC}"
+}
+menu_logs() {
+    print_banner
+    section_title "LOGS DE PUERTO"
+    print_ports_banner
+
+    local ports
+    ports=$(list_ports)
+    [[ -z "$ports" ]] && { pause; return; }
+
+    read -rp "$(echo -e "${TXTC}Puerto para ver logs: ${NC}")" port
+    if ! port_exists "$port"; then
+        err "El puerto $port no esta configurado en este script"
+        pause
+        return
+    fi
+
+    echo
+    info "Ultimas 30 lineas:"
+    draw_bar
+    while IFS= read -r logline; do
+        [[ -z "$logline" ]] && continue
+        format_log_line "$logline"
+    done < <(journalctl -u "$(service_name "$port")" -n 30 --no-pager 2>/dev/null)
+    draw_bar
+    pause
+}
+menu_uninstall() {
+    print_banner
+    section_title "DESINSTALAR TODO"
+    warn "Esto detendra y eliminara TODAS las instancias y el binario."
+    read -rp "$(echo -e "${TXTC}¿Estas seguro? Escribe 'SI' para confirmar: ${NC}")" resp
+    if [[ "$resp" != "SI" ]]; then
+        info "Cancelado"
+        pause
+        return
+    fi
+
+    local ports
+    ports=$(list_ports)
+    for p in $ports; do
+        info "Eliminando puerto $p ..."
+        stop_port "$p"
+        remove_unit "$p"
+    done
+    rm -f "${PORTS_FILE}"
+    rm -f "${BINARY_PATH}"
+    rm -f /etc/systemd/system/hcr-*.service 2>/dev/null || true
+    systemctl daemon-reload
+    ok "Todo desinstalado"
+    pause
+}
+main_menu() {
+    while true; do
+        print_banner
+        print_ports_banner
+
+        echo -e "$(opt_line "01" "Instalar / Actualizar HCR-Server")"
+        echo -e "$(opt_line "02" "Iniciar / Agregar puerto")"
+        echo -e "$(opt_line "03" "Detener / Reactivar puerto")"
+        echo -e "$(opt_line "04" "Editar puerto")"
+        echo -e "$(opt_line "05" "Eliminar puerto")"
+        echo -e "$(opt_line "06" "Ver logs de un puerto")"
+        echo -e " ${OPT_BRACKET}[${RED}09${OPT_BRACKET}]${OPT_ARROW} >${RED} Desinstalar todo${NC}"
+        echo -e " ${OPT_BRACKET}[${GRAY}00${OPT_BRACKET}]${OPT_ARROW} >${GRAY} Salir${NC}"
+        echo
+        draw_bar
+        echo -ne "${YELLOW}▶ Opcion : ${NC}"
+        read -r opt
+
+        case "$opt" in
+            1|01) install_binary ;;
+            2|02) menu_add_port ;;
+            3|03) menu_stop_port ;;
+            4|04) menu_edit_port ;;
+            5|05) menu_delete_port ;;
+            6|06) menu_logs ;;
+            9|09) menu_uninstall ;;
+            0|00) exit 0 ;;
+            *) warn "Opcion invalida: elige un numero del menu"; sleep 1 ;;
+        esac
+    done
+}
+require_root
+ensure_dirs
+main_menu
