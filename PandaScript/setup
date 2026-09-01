@@ -192,6 +192,9 @@ update_pak () {
     echo -e "\033[94m    ${TTcent} UPDATE DATE : $(date +"%d/%m/%Y") & TIME : $(date +"%H:%M") ${TTcent}" | pv -qL 80
     [[ $(dpkg --get-selections|grep -w "net-tools"|head -1) ]] || apt-get install net-tools -y &>/dev/null
     [[ $(dpkg --get-selections|grep -w "boxes"|head -1) ]] || apt-get install boxes -y &>/dev/null
+    [[ $(dpkg --get-selections|grep -w "screen"|head -1) ]] || apt-get install screen -y &>/dev/null
+    [[ $(dpkg --get-selections|grep -w "stunnel4"|head -1) ]] || apt-get install stunnel4 -y &>/dev/null
+    [[ $(dpkg --get-selections|grep -w "python2"|head -1) ]] || apt-get install python2 -y &>/dev/null
     echo ""
     apt-get install software-properties-common -y > /dev/null 2>&1 && echo -e "\033[94m    ${TTcent} INSTALANDO NUEVO PAQUETES ( S|P|C )    ${TTcent}" | pv -qL 80
     echo ""

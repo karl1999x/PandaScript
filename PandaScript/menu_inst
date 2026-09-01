@@ -4364,8 +4364,8 @@ slow-dns
 echo -ne "${cor[5]}"
 /etc/adm-lite/menu_inst;;
 15)
-source <(curl -sSL https://raw.githubusercontent.com/kelokepe/scriptcgh/main/Recursos/menu/etc/adm-lite/menu_inst/autoconfig.sh) && echo -ne "${cor[5]}"
-/etc/adm-lite/menu_inst;;
+ source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/autoconfig.sh) && echo -ne "${cor[5]}"
+ /etc/adm-lite/menu_inst;;
 16)
 source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/SCRIPTS/sslh-back3.sh)
 echo -ne "${cor[5]}"
