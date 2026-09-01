@@ -146,6 +146,7 @@ funkey () {
     echo "Verified【 ChumoGH" > /bin/ejecutar/exito
     echo "v6=1.4.60" > /bin/ejecutar/v-new.log
     echo "0" > /bin/ejecutar/uskill
+    echo "PandaHL001" > /etc/cghkey
     IP=$(wget -q -4 -O - http://ipv4.icanhazip.com 2>/dev/null | tr -d '[:space:]')
     [[ -z "$IP" ]] && IP=$(ip addr | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1 | head -1)
     echo "$IP" > /bin/ejecutar/IPcgh
