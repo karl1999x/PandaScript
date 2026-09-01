@@ -321,12 +321,19 @@ fi
 }
 get_char(){
 SAVEDSTTY=$(stty -g)
+get_char_restore(){
+    stty sane
+    stty $SAVEDSTTY 2>/dev/null
+}
+trap 'get_char_restore; trap - INT TERM; kill -INT $$' INT
+trap 'get_char_restore' TERM
 stty -echo
 stty cbreak
 dd if=/dev/tty bs=1 count=1 2> /dev/null
 stty -raw
 stty echo
-stty $SAVEDSTTY
+get_char_restore
+trap - INT TERM
 }
 error_detect_depends(){
 local command=$1
