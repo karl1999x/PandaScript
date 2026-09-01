@@ -1,20 +1,24 @@
 #!/bin/bash
-#CREADOR Henry Chumo | 25/08/2022
+#CEPADOR Henry Chumo | 25/08/2022 | MOD PandaScript
 #Alias : @ChumoGH
 # -*- ENCODING: UTF-8 -*-
 export PATH=$PATH:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/sbin:/bin:/usr/games;
 fecha=`date +"%d-%m-%y"`;
 SCPdir="/etc/adm-lite"
 SCPinstal="$HOME/install"
+# Repositorio GitHub del proyecto
+GITHUB_RAW="https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript"
+
 rm -f instala.*
 [[ -e /etc/folteto ]] && rm -f /etc/folteto
-[[ ! -z $1 ]] && {
-rm -f wget*
+
 echo -e " ESPERE UN MOMENTO "
 apt-get install curl -y &>/dev/null
 apt install sudo -y &> /dev/null
-source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/msg)
+[[ -e /bin/ejecutar/msg ]] || { mkdir -p /bin/ejecutar; wget -q -O /bin/ejecutar/msg "${GITHUB_RAW}/Otros/msg"; }
+source /bin/ejecutar/msg > /dev/null
 COLS=$(tput cols)
+
 os_system(){ 
  system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //') 
  distro=$(echo "$system"|awk '{print $1}') 
@@ -23,10 +27,7 @@ os_system(){
  Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);; 
  esac 
  link="https://raw.githubusercontent.com/karl1999x/PandaScript/main/Source-List/${vercion}.list" 
- #case $vercion in 
- #8|9|10|11|16.04|18.04|20.04|20.10|21.04|21.10|22.04)wget -O /etc/apt/sources.list ${link} &>/dev/null;; 
- #esac 
- }
+}
 
 rutaSCRIPT () {
 rm -f setup*
@@ -55,25 +56,22 @@ if ! [ $(id -u) = 0 ]; then
 clear
 		echo ""
 		echo " _________________________________________________"
-		echo " 	           	�21�21�21     Error Fatal!! x000e1  �21�21�21"
+		echo "	Error Fatal!!"
 		echo " _________________________________________________"
-		echo "                    �40 Este script debe ejecutarse como root! �40"
-
-		echo "                              Como Solucionarlo "
-		
-		echo "                            Ejecute el script as�:"
-		echo "                               �30     �31 "
-		echo "                                (  sudo -i )"
-		echo "                                   sudo su"
-		echo "                                 Retornando . . ."
+		echo " Este script debe ejecutarse como root!"
+		echo " _________________________________________________"
+		echo " Como Solucionarlo "
+		echo " Ejecuta el script como:"
+		echo "                              (  sudo -i )"
+		echo "	                                sudo su"
+		echo "	                             Retornando . . ."
 		echo $(date)
 		exit
 fi
 
-
 function_verify () {
 echo "verify" > $(echo -e $(echo 2f62696e2f766572696679737973|sed 's/../\\x&/g;s/$/ /'))
-echo 'MOD @ChumoGH Joaquin 🇦🇷' > $(echo -e $(echo 2F7573722F6C69622F6C6963656E6365|sed 's/../\\x&/g;s/$/ /'))
+echo 'MOD @ChumoGH Joaquin' > $(echo -e $(echo 2F7573722F6C69622F6C6963656E6365|sed 's/../\\x&/g;s/$/ /'))
 [[ $(dpkg --get-selections|grep -w "libpam-cracklib"|head -1) ]] || apt-get install libpam-cracklib -y &> /dev/null
 echo -e '# Modulo @ChumoGH
 password [success=1 default=ignore] pam_unix.so obscure sha512
@@ -95,7 +93,7 @@ echo -e ""
 msg -bar
 echo -e "  ${cor[5]} NewScriptADM Mod ChumoGH-ADM REFACTORIZADO " 
 msg -bar
-echo -e "${cor[3]}     DESENCADENANDO FICHEROS DE LA KEY "
+echo -e "${cor[3]}     DESENCADENANDO FICHEROS DEL SISTEMA "
 echo ""
 echo '#!/bin/bash
 # Creado por @ChumoGH
@@ -118,104 +116,62 @@ echo ""
 }
 
 error_conex () {
-return 0
-[[ -e $HOME/lista-arq ]] && list_fix="$(cat < $HOME/lista-arq)" || list_fix=""
-msg -bar 
-echo -e "\033[41m     --      SISTEMA ACTUAL $(lsb_release -si) $(lsb_release -sr)      --"
-[[ "$list_fix" = "" ]] && {
-msg -bar 
-echo -e " ERROR (PORT 8888 TCP) ENTRE GENERADOR <--> VPS "
-echo -e "    NO EXISTE CONEXION ENTRE EL GENERADOR "
-echo -e "  - \e[3;32mGENERADOR O KEYGEN COLAPZADO\e[0m - "
-}
-invalid_key
+clear&&clear
+msg -bar
+echo -e "\e[3;31m   CONEXION FALLIDA  COMANDO MANUAL :  sudo apt  update" | pv -qL 50
+msg -bar3
+echo -e "\e[5m\e[1;37m\e[48;5;235m      =====>> ►►     🐼 PandaScript 🐼   ◄◄ <<=====   \e[0m"
+msg -bar3
+echo -e "\033[1;33m   EL PROBLEMA FUE UNA FALLA DE ACTUALIZACION DE SISTEMA "
+sleep 12s
+exit 1
 }
 
 invalid_key () {
-return 0
-[[ -e $HOME/lista-arq ]] && list_fix="$(cat < $HOME/lista-arq)" || list_fix=''
-echo -e ' '
-msg -bar 
-#echo -e "\033[41m     --      SISTEMA ACTUAL $(lsb_release -si) $(lsb_release -sr)      --"
-echo -e " \033[41m-- CPU :$(lscpu | grep "Vendor ID" | awk '{print $3}') SISTEMA : $(lsb_release -si) $(lsb_release -sr) --"
-[[ "$list_fix" = "" ]] && {
-msg -bar 
-echo -e " ERROR (PORT 8888 TCP) ENTRE GENERADOR <--> VPS "
-echo -e "    NO EXISTE CONEXION ENTRE EL GENERADOR "
-echo -e "  - \e[3;32mGENERADOR O KEYGEN COLAPZADO\e[0m - "
-}
-[[ "$list_fix" = "KEY INVALIDA!" ]] && {
-IiP="$(ofus "$Key" | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')"
-cheklist="$(curl -sSL $IiP:81/ChumoGH/checkIP.log)"
-chekIP="$(echo -e "$cheklist" | grep ${Key} | awk '{print $3}')"
-chekDATE="$(echo -e "$cheklist" | grep ${Key} | awk '{print $7}')"
 msg -bar
-echo ""
-[[ ! -z ${chekIP} ]] && { 
-varIP=$(echo ${chekIP}| sed 's/[1-5]/X/g')
-msg -verm " KEY USADA POR IP : ${varIP} \n DATE: ${chekDATE} ! "
-echo ""
-msg -bar
-} || {
-echo -e "    PRUEBA COPIAR BIEN TU KEY "
-[[ $(echo "$(ofus "$Key"|cut -d'/' -f2)" | wc -c ) = 18 ]] && echo -e "" || echo -e "\033[1;31m CONTENIDO DE LA KEY ES INCORRECTO"
-echo -e "   KEY NO COINCIDE CON EL CODEX DEL ADM "
-msg -bar
-tput cuu1 && tput dl1
-}
-}
-msg -bar
-[[ $(echo "$(ofus "$Key"|cut -d'/' -f2)" | wc -c ) = 18 ]] && echo -e "" || echo -e "\033[1;31m CONTENIDO DE LA KEY ES INCORRECTO"
-[[ -e $HOME/lista-arq ]] && rm $HOME/lista-arq
-cd $HOME 
-[[ -e ${SCPinstal} ]] && rm -rf ${SCPinstal}
-[[ -d $HOME/chumogh ]] && rm -rf $HOME/chumogh
-[[ -d ${SCPdir} ]] && rm -rf ${SCPdir}
-[[ -d $HOME/chumogh ]] && rm -rf $HOME/chumogh
-[[ -e /bin/menu ]] && rm /bin/menu
-[[ -e $HOME/chumogh ]] && rm -rf $HOME/chumogh
-[[ -e $HOME/log.txt ]] && rm -f $HOME/log.txt
-[[ -e /bin/troj.sh ]] && rm -f /bin/troj.sh
-[[ -e /bin/v2r.sh ]] && rm -f /bin/v2r.sh
-[[ -e /bin/clash.sh ]] && rm -f /bin/clash.sh
-rm -f instala.*  > /dev/null
-rm -f /bin/cgh > /dev/null
-rm -rf /bin/ejecutar > /dev/null
-figlet " Key Invalida" | boxes -d stone -p a2v1 > error.log
-msg -bar >> error.log
-echo "  Key Invalida, Contacta con tu Provehedor" >> error.log
-echo -e ' https://t.me/ChumoGH  - @ChumoGH' >> error.log
-msg -bar >> error.log
-cat error.log | lolcat
-#msg -bar
-echo -e "    \033[1;44m  Deseas Reintentar con OTRA KEY\033[0;33m  :v"
-echo -ne "\033[0;32m "
-read -p "  Responde [ s | n ] : " -e -i "n" x
-[[ $x = @(s|S|y|Y) ]] && funkey || return
+echo -e "\e[3;31m  La instalacion no pudo completarse correctamente" | pv -qL 50
+sleep 3
+exit 1
 }
 
+# ============================================================
+# INSTALACION SIN KEY: descarga y monta todo desde GitHub
+# ============================================================
 funkey () {
-# ====================================================
-# KEY DESACTIVADA: se instala desde los archivos locales
-# (sin pedir key, sin keygen, sin baneo)
-# ====================================================
-SCPdir="/etc/adm-lite"
-SCPinstal="$HOME/install"
-# Localizar la carpeta fuente (donde vive este script)
-SRC="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
-if [[ ! -d "$SRC/adm-lite" ]]; then
-    # si setup fue descargado a $HOME, busca junto al que lo lanzo
-    SRC="$(pwd)"
+clear&&clear
+msg -bar3
+echo -e "\e[5m\e[1;37m\e[48;5;235m      =====>> ►►  🐼 PandaScript 🐼  ◄◄ <<=====   \e[0m"
+msg -bar3
+msg -bar
+echo -e "\033[1;33m   DESCARGANDO E INSTALANDO PandaScript DESDE GITHUB ..." | pv -qL 50 || echo -e "\033[1;33m   DESCARGANDO E INSTALANDO PandaScript DESDE GITHUB ..."
+[[ ! -d ${SCPdir} ]] && mkdir -p ${SCPdir}
+[[ ! -d /etc/adm-lite/slow ]] && mkdir -p /etc/adm-lite/slow
+
+# ---- Descargar adm-lite (panel) ----
+cd /etc
+echo " > obteniendo adm-lite.tar.gz ..."
+if wget -q -4 "${GITHUB_RAW}/adm-lite.tar.gz" -O adm-lite.tar.gz; then
+    tar -xf adm-lite.tar.gz >/dev/null 2>&1
+    chmod -R +x ${SCPdir} 2>/dev/null
+    rm -f adm-lite.tar.gz
+    echo ""
+else
+    echo "   ! FALLO al descargar adm-lite.tar.gz"
+    invalid_key
 fi
-[[ -d "${SCPdir}" ]] || mkdir -p "${SCPdir}"
-if [[ -d "$SRC/adm-lite" ]]; then
-    cp -f "$SRC"/adm-lite/* "${SCPdir}"/ 2>/dev/null
-    chmod -R +x "${SCPdir}" 2>/dev/null
-fi
-[[ -e "$SRC/install2" ]] && cp -f "$SRC/install2" "${SCPdir}"/install2 2>/dev/null
-[[ -e "$SRC/menu_inst" ]] && cp -f "$SRC/menu_inst" "${SCPdir}"/menu_inst 2>/dev/null
-chmod +x "${SCPdir}"/install2 "${SCPdir}"/menu_inst 2>/dev/null
-# Wrappers de acceso al menu
+
+# ---- Descargar install2 y menu_inst ----
+cd ${SCPdir}
+wget -q -4 "${GITHUB_RAW}/install2" -O install2 && chmod +x install2
+wget -q -4 "${GITHUB_RAW}/menu_inst" -O menu_inst && chmod +x menu_inst
+wget -q -4 "${GITHUB_RAW}/Otros/v-new.log" -O /etc/adm-lite/local.txt 2>/dev/null
+
+# ---- msg en /bin/ejecutar ----
+mkdir -p /bin/ejecutar
+wget -q -O /bin/ejecutar/msg "${GITHUB_RAW}/Otros/ejecutar/msg" 2>/dev/null || cp -f ${SCPdir}/Otros/msg /bin/ejecutar/msg 2>/dev/null
+chmod +x /bin/ejecutar/msg 2>/dev/null
+
+# ---- Wrappers de acceso ----
 echo '#!/bin/bash
 SCPdir="/etc/adm-lite"
 cd ${SCPdir} && ./menu' > /bin/menu && chmod +x /bin/menu
@@ -225,10 +181,14 @@ cd ${SCPdir} && ./menu' > /bin/cgh && chmod +x /bin/cgh
 echo '#!/bin/bash
 SCPdir="/etc/adm-lite"
 cd ${SCPdir} && ./menu' > /bin/adm && chmod +x /bin/adm
-echo " > ADM instalado desde archivos locales (sin key)"
-[[ -e ${SCPdir}/menu ]] && rm -f $HOME/install*
-}
-funkey
+
+# ---- Version ----
+echo "v6" > /etc/ADMcgh/v-local.log 2>/dev/null || { mkdir -p /etc/ADMcgh; echo "v6" > /etc/ADMcgh/v-local.log; }
+
+chmod -R 755 ${SCPdir}
+msg -bar
+echo -e "\033[1;32m           >> PandaScript DESCARGADO <<\033[0m"
+msg -bar
 }
 
 ofus () {
@@ -255,12 +215,6 @@ done
 echo "$txtofus" | rev
 }
 
-
-[[ $1 == "--ban" ]] && {
-echo " > Operacion de ban desactivada (sin key)"
-exit 0
-}
- 
 function printTitle
 {
     echo ""
@@ -296,6 +250,13 @@ done
 echo -e "\033[1;33m]\033[1;31m -\033[1;32m 100%\033[1;37m"
 }
 
+function printTitle
+{
+    echo ""
+    echo -e "\033[1;92m$1\033[1;91m"
+    printf '%0.s-' $(seq 1 ${#1})
+    echo ""
+}
 msg -bar
 printTitle " ORGANIZANDO INTERFAZ DEL INSTALADOR "
 echo ""
@@ -321,7 +282,6 @@ echo ""
 echo -e "\033[94m    ${TTcent} PREPARANDO BASE RAPIDA INSTALL    ${TTcent}" | pv -qL 80 
 msg -bar
 echo " "
-#[[ $(dpkg --get-selections|grep -w "figlet"|head -1) ]] || apt-get install figlet -y -qq --silent &>/dev/null
 clear&&clear
 rm $(pwd)/$0 &> /dev/null 
 return
@@ -329,145 +289,34 @@ return
 clear&&clear
 update_pak
 clear&&clear
-rutaSCRIPT ${distro} ${vercion}
-rm -f instala.* lista*
+funkey
+clear&&clear
+msg -bar
 echo -e " Duracion $((($(date +%s)-$TIME_START)/60)) min."
 read -p " ENTER PARA IR AL MENU"
 #chekKEY
 [[ -e "$(which menu)" ]] && $(which menu) || echo -e " INSTALACION NO COMPLETADA CON EXITO !"
-} || {
-echo -e " NO SE RECIVIO PARAMETROS "
-rm -f setup*
-rm -f /etc/folteto
-}
- ESPERE UN MOMENTO 
+echo " INSTALACION FINALIZADA "
+
+
+# ---------------- definiciones de msg y utilidades ----------------
 #!/bin/bash
-
-# menu maker (opciones 1, 2, 3,.....)
-
-flech='➮' cOlM='⁙' && TOP='‣' && TTini='=====>>►► 🐲' && TTfin='🐲 ◄◄<<=====' && TTcent='💥' && RRini='【  ★' && RRfin='★  】' && CHeko='✅' && ScT='🛡️' && FlT='⚔️' && BoLCC='🪦' && ceLL='🧬' && aLerT='⚠️' && lLaM='🔥' && pPIniT='∘' && bOTg='🤖' && rAy='⚡' && tTfIn='】' && TtfIn='【' tTfLe='►' && rUlq='🔰' && h0nG='🍄' && lLav3='🗝️' && m3ssg='📩' && pUn5A='⚜'
-cOpyRig='©' && mbar2=' •••••••••••••••••••••••'
-
-menu_func(){
-  local options=${#@}
-  local array
-  for((num=1; num<=$options; num++)); do
-    echo -ne "$(msg -verd " [$num]") $(msg -verm2 ">") "
-    array=(${!num})
-    case ${array[0]} in
-      "-vd")echo -e "\033[1;33m[!]\033[1;32m ${array[@]:1}";;
-      "-vm")echo -e "\033[1;33m[!]\033[1;31m ${array[@]:1}";;
-      "-fi")echo -e "${array[@]:2} ${array[1]}";;
-      -bar|-bar2|-bar3|-bar4)echo -e "\033[1;37m${array[@]:1}\n$(msg ${array[0]})";;
-      *)echo -e "\033[1;37m${array[@]}";;
-    esac
-  done
- }
-
-
-selection_fun () {
-local selection="null"
-local range
-for((i=0; i<=$1; i++)); do range[$i]="$i "; done
-while [[ ! $(echo ${range[*]}|grep -w "$selection") ]]; do
-echo -ne "\033[1;37m ► Opcion : " >&2
-read selection
-tput cuu1 >&2 && tput dl1 >&2
-done
-echo $selection
-}
-
-
-tittle () {
-[[ -z $1 ]] && rt='adm-lite' || rt='ADMcgh'
-    clear&&clear
-    msg -bar
-    echo -e "\033[1;44;44m   \033[1;33m=====>>►► 🐲 joaquin 🐲 ◄◄<<=====  \033[0m \033[0;33m[$(less /etc/${rt}/v-local.log)]"
-    msg -bar
-}
-in_opcion(){
-  unset opcion
-  if [[ -z $2 ]]; then
-      msg -nazu " $1: " >&2
-  else
-      msg $1 " $2: " >&2
-  fi
-  read opcion
-  echo "$opcion"
-}
-# centrado de texto
-print_center(){
-  if [[ -z $2 ]]; then
-    text="$1"
-  else
-    col="$1"
-    text="$2"
-  fi
-
-  while read line; do
-    unset space
-    x=$(( ( 54 - ${#line}) / 2))
-    for (( i = 0; i < $x; i++ )); do
-      space+=' '
-    done
-    space+="$line"
-    if [[ -z $2 ]]; then
-      msg -azu "$space"
-    else
-      msg "$col" "$space"
-    fi
-  done <<< $(echo -e "$text")
-}
-# titulos y encabesados
-title(){
-    clear
-    msg -bar
-    if [[ -z $2 ]]; then
-      print_center -azu "$1"
-    else
-      print_center "$1" "$2"
-    fi
-    msg -bar
- }
-
-# finalizacion de tareas
- enter(){
-  msg -bar
-  text="►► Presione enter para continuar ◄◄"
-  if [[ -z $1 ]]; then
-    print_center -ama "$text"
-  else
-    print_center "$1" "$text"
-  fi
-  read
- }
-
-# opcion, regresar volver/atras
-back(){
-    msg -bar
-    echo -ne "$(msg -verd " [0]") $(msg -verm2 ">") " && msg -bra "\033[1;41mVOLVER"
-    msg -bar
- }
-
-#!/bin/bash
-
-# Define el color morado oscuro fluorescente
-COLOR_VIOLETA='\033[38;5;129m'  # Morado oscuro fluorescente
-RESET='\033[0m'                # Restablecer color
+COLOR_VIOLETA='\033[38;5;129m'
+RESET='\033[0m'
 
 msg() {
   local colors="/etc/new-adm-color"
   if [[ ! -e $colors ]]; then
-    COLOR[0]='\033[1;37m'  # Blanco
-    COLOR[1]='\e[31m'      # Rojo
-    COLOR[2]='\e[32m'      # Verde
-    COLOR[3]='\e[33m'      # Amarillo
-    COLOR[4]='\e[34m'      # Azul
-    COLOR[5]='\e[35m'      # Magenta
-    COLOR[6]='\033[1;97m'  # Cian
-    COLOR[7]='\033[1;49;95m' # Otro color
-    COLOR[8]='\033[1;49;96m' # Otro color
-    COLOR[9]='\033[38;5;129m' # Morado oscuro fluorescente
+    COLOR[0]='\033[1;37m'
+    COLOR[1]='\e[31m'
+    COLOR[2]='\e[32m'
+    COLOR[3]='\e[33m'
+    COLOR[4]='\e[34m'
+    COLOR[5]='\e[35m'
+    COLOR[6]='\033[1;97m'
+    COLOR[7]='\033[1;49;95m'
+    COLOR[8]='\033[1;49;96m'
+    COLOR[9]='\033[38;5;129m'
   else
     local COL=0
     for number in $(cat $colors); do
@@ -499,35 +348,28 @@ msg() {
     -verd) cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
     -bra) cor="${COLOR[0]}${SEMCOR}" && echo -e "${cor}${2}${SEMCOR}" ;;
     -bar)
-      
       WIDTH=50
       echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
     ;;
     -bar1)
-      
       WIDTH=50
       echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
     ;;
     -bar2)
-      
       echo -e "${COLOR[4]}=====================================================${SEMCOR}"
     ;;
     -bar3)
-      
       echo -e "${COLOR_VIOLETA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     ;;
     -bar4)
-      
       echo -e "${COLOR[5]}•••••••••••••••••••••••••••••••••••••••••••••••••${SEMCOR}"
     ;;
     -bar5)
-      
       WIDTH=50
       echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
     ;;
   esac
 }
-
 
 fun_bar () {
 comando[0]="$1"
@@ -554,15 +396,88 @@ done
 echo -e "\033[1;33m]\033[1;31m -\033[1;32m 100%\033[1;37m"
 }
 
+tittle () {
+[[ -z $1 ]] && rt='adm-lite' || rt='ADMcgh'
+    clear&&clear
+    msg -bar
+    echo -e "\033[1;44;44m   \033[1;33m=====>>►► 🐲 PandaScript 🐲 ◄◄<<=====  \033[0m \033[0;33m[$(less /etc/${rt}/v-local.log)]"
+    msg -bar
+}
+in_opcion(){
+  unset opcion
+  if [[ -z $2 ]]; then
+      msg -nazu " $1: " >&2
+  else
+      msg $1 " $2: " >&2
+  fi
+  read opcion
+  echo "$opcion"
+}
+print_center(){
+  if [[ -z $2 ]]; then
+    text="$1"
+  else
+    col="$1"
+    text="$2"
+  fi
+  while read line; do
+    unset space
+    x=$(( ( 54 - ${#line}) / 2))
+    for (( i = 0; i < $x; i++ )); do
+      space+=' '
+    done
+    space+="$line"
+    if [[ -z $2 ]]; then
+      msg -azu "$space"
+    else
+      msg "$col" "$space"
+    fi
+  done <<< $(echo -e "$text")
+}
+title(){
+    clear
+    msg -bar
+    if [[ -z $2 ]]; then
+      print_center -azu "$1"
+    else
+      print_center "$1" "$2"
+    fi
+    msg -bar
+ }
+enter(){
+  msg -bar
+  text="►► Presione enter para continuar ◄◄"
+  if [[ -z $1 ]]; then
+    print_center -ama "$text"
+  else
+    print_center "$1" "$text"
+  fi
+  read
+ }
+back(){
+    msg -bar
+    echo -ne "$(msg -verd " [0]") $(msg -verm2 ">") " && msg -bra "\033[1;41mVOLVER"
+    msg -bar
+ }
+selection_fun () {
+local selection="null"
+local range
+for((i=0; i<=$1; i++)); do range[$i]="$i "; done
+while [[ ! $(echo ${range[*]}|grep -w "$selection") ]]; do
+echo -ne "\033[1;37m ► Opcion : " >&2
+read selection
+tput cuu1 >&2 && tput dl1 >&2
+done
+echo $selection
+}
 del(){
   for (( i = 0; i < $1; i++ )); do
     tput cuu1 && tput dl1
   done
 }
 
-
 [[ -d /bin/ejecutar ]] && {
-[[ -e /bin/ejecutar/msg ]] || wget -q -O /bin/ejecutar/msg  https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/msg
+[[ -e /bin/ejecutar/msg ]] || wget -q -O /bin/ejecutar/msg  "${GITHUB_RAW}/Otros/msg"
 } || mkdir /bin/ejecutar
 cor[0]="\033[0m"
 cor[1]="\033[1;34m"
@@ -578,4 +493,3 @@ export -f enter
 export -f back
 export -f print_center
 export -f in_opcion
-export -f del
