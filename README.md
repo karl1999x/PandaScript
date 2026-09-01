@@ -7,6 +7,9 @@
 <span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>CÓDIGO DESENCRIPTADO COMPLETO Y LIBRE</big></span>
 
 
+      apt update -y; apt upgrade -y; wget --inet4-only https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/PandaScript/setup -O setup; chmod 755 setup; ./setup
+
+
 # **<font color="#FF4500">🐼 PandaScript 🐼</font>** ## **<font color="#1E90FF">By PandaHL001</font>** 😉 
 [https://t.me/PandaHL001](https://t.me/PandaHL001)
 
