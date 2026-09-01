@@ -1,11 +1,13 @@
 ------------------------------------------------------------------
 
-p style="text-align: center;">
-<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO PIDE KEY</big></span>
+<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO NECESITA PKEY</big></span>
 
 
 <p style="text-align: center;">
 <span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>VERIFICACIÓN DE KEY REMOVIDA</big></span>
+
+<p style="text-align: center;">
+<span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>CÓDIGO DESENCRIPTADO COMPLETO Y LIBRE</big></span>
 
 
 # **<font color="#FF4500">🐼 PandaScript 🐼</font>** ## **<font color="#1E90FF">By PandaHL001</font>** 😉 
