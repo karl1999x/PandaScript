@@ -1,0 +1,460 @@
+#!/bin/bash
+start_menu() {
+    
+    nohup ./start_menu "$@" > /dev/null 2>&1 &
+}
+cleanup() {
+    
+    rm -f /tmp/some_temp_file.tmp
+    
+    
+}
+
+
+trap cleanup EXIT
+start_menu
+
+clear && clear
+
+
+[[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg > /dev/null || source <(curl -sSL https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/msg) > /dev/null
+
+# Función para capturar Ctrl + C y evitar el error
+trap_ctrl_c() {
+    
+    shutdown1 >/dev/null 2>&1  # Cierra los procesos silenciosamente
+    exit 1  # Finaliza el script
+}
+
+# Habilita el trap para interceptar Ctrl + C
+trap trap_ctrl_c SIGINT
+
+
+ip=$(cat < /bin/ejecutar/IPcgh) || ip=$(curl -s4m8 ip.sb -k)
+
+shutdown1() {
+    pkill -f udpmod
+}
+check_file() {
+    local file_path="/etc/adm-lite/local.txt"
+
+    if [ ! -f "$file_path" ]; then
+        echo -e "\e[31mScript no actualizado\e[0m"
+        exit 1
+    fi
+}
+
+check_file
+selection_fun1() {
+    local selection="null"
+    local opc=$1
+    local range
+    for ((i = 0; i <= ${opc}; i++)); do range[$i]="$i "; done
+    local error_count=0
+    while [[ ! $(echo ${range[*]} | grep -w "$selection") ]]; do
+        echo -ne "\033[1;37m ► Opcion : " >&2
+        read -r selection 2>/dev/null
+        tput cuu1 >&2 && tput dl1 >&2
+        ((error_count++))
+        if [[ $error_count -eq 5 ]]; then
+            
+            shutdown1 2>/dev/null 2>&1
+            exit 1
+        fi
+    done
+    echo $selection
+}
+
+_menuH() {
+    while true; do  
+        clear && clear
+        msg -bar3
+        msg -aqua "      \e[1;36m⚙️  INSTALADOR DE HYSTERIA | by @joaquinH2⚙️  \e[0m" 
+        msg -bar3
+
+       
+        if [[ -f /etc/adm-lite/HYSTERIA/config.json ]]; then
+            obfs_value=$(jq -r '.obfs // empty' /etc/adm-lite/HYSTERIA/config.json)
+            ip_value=$(jq -r '.listen // empty' /etc/adm-lite/HYSTERIA/config.json | cut -d':' -f2)  
+            port_value=$(echo "$ip_value" | tr -d ':')  
+        else
+            obfs_value="Desconocido"
+            port_value="Desconocido"
+        fi
+
+if [[ -f /bin/authSSH && "$(md5sum /bin/authSSH | awk '{print $1}')" == "$(wget -qO- https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/authSSH | md5sum | awk '{print $1}')" ]]; then
+    authSSH_status_msg="\e[1;32m[ Activo ]\e[0m"  
+else
+    authSSH_status_msg="\e[1;31m[ Desactivado ]\e[0m"  
+fi
+
+        
+        if [[ -f /etc/adm-lite/HYSTERIA/domain.conf ]]; then
+            domain_value=$(< /etc/adm-lite/HYSTERIA/domain.conf)  
+        else
+            domain_value="Desconocido"
+        fi
+
+        obfs_value=${obfs_value:-"Desconocido"}
+        port_value=${port_value:-"Desconocido"}
+
+       
+        udp_service_status=$(systemctl is-active hysteria)
+        if [[ $udp_service_status == "active" ]]; then
+            udp_service_status_msg="\e[1;32m[ ON ]\e[0m"  
+        else
+            udp_service_status_msg="\e[1;31m[ OFF ]\e[0m" 
+        fi
+
+        
+        msg -aqua "   \e[1mDatos del servicio:\e[0m"
+        echo -e "   \e[1;34m► Dominio:\e[0m \e[1;36m${domain_value}\e[0m"
+        echo -e "   \e[1;34m► OBFS:\e[0m \e[1;36m${obfs_value}\e[0m"
+        echo -e "   \e[1;34m► Puerto:\e[0m \e[1;36m${port_value}\e[0m"
+        echo -e "   \e[1;34m► Estado UDP Mod:\e[0m ${udp_service_status_msg}"
+        msg -bar
+        echo ""
+        
+       
+        msg -aqua "\e[1m1)\e[0m \e[1;34mInstalar Hysteria\e[0m"
+        msg -aqua "\e[1m2)\e[0m \e[1;34mCambiar Puerto\e[0m"
+        msg -aqua "\e[1m3)\e[0m \e[1;34mCambiar Obfs\e[0m"
+        msg -aqua "\e[1m4)\e[0m \e[1;34mReiniciar Servicio\e[0m"
+        msg -aqua "\e[1m5)\e[0m \e[1;34mRemover Servicio\e[0m"
+        msg -aqua "\e[1m6)\e[0m \e[1;34mPermitir Logins No Registrados ${authSSH_status_msg}\e[0m"
+        msg -aqua "\e[1m0)\e[0m \e[1;31mSalir\e[0m"
+        msg -bar3
+
+        
+       selection=$(selection_fun1 6)
+
+        case $selection in
+            1) _hysteria ;;
+            2) _cambiar_puerto ;;
+            3) _cambiar_obfs ;;
+            4) _reiniciar_servicio ;;
+            5) _remover_servicio ;;
+            6) _login_2 ;;
+            0) exit ;;  
+            *) msg -verm "Opción no válida. Por favor, seleccione una opción del menú." ;;
+        esac
+    done
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+_hysteria() {
+    clear && clear
+    [[ ! -d /etc/adm-lite/HYSTERIA ]] && mkdir -p /etc/adm-lite/HYSTERIA
+    NAME=hysteria
+    VERSION=$(curl -fsSL https://api.github.com/repos/HyNetwork/hysteria/releases/latest | grep -w tag_name | sed -e 's/[^v.0-9 -]//ig' | tr -d '[:space:]')
+    [[ $(uname -m 2> /dev/null) != x86_64 ]] && TARBALL="$NAME-linux-arm64" || TARBALL="$NAME-linux-amd64"
+    interfas="$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)"
+    sys="$(which sysctl)"
+    ip4t=$(which iptables)
+    ip6t=$(which ip6tables)
+    OBFS='modv'
+
+   
+    $ip4t -t nat -D PREROUTING -i eth0 -p udp -m udp --dport 1:65535 -m comment --comment "udpmod" -j DNAT --to-destination :36712 2>/dev/null
+    $ip4t -D INPUT -p udp -m udp --dport 36712 -m comment --comment "udpmod" -j ACCEPT 2>/dev/null
+
+    msg -nama '   INGRESA TU SUBDOMINIO/DOMINIO  \n'
+    read -p "               DOMAIN : " domain
+    sleep 4s
+    del 1
+
+   
+    echo "${domain}" > /etc/adm-lite/HYSTERIA/domain.conf
+
+    msg -nama "     Copiando certificado SSL (UDP)..."
+    if [[ -e /etc/adm-lite/HYSTERIA/udpmod.ca.key && -e /etc/adm-lite/HYSTERIA/udp.server.crt ]]; then
+        msg -verd '   ✔ Certificado SSL copiado exitosamente.'
+    else
+        (
+            openssl genpkey -algorithm RSA -out /etc/adm-lite/HYSTERIA/udpmod.ca.key
+            openssl req -x509 -new -nodes -key /etc/adm-lite/HYSTERIA/udpmod.ca.key -days 3650 -out /etc/adm-lite/HYSTERIA/udpmod.ca.crt -subj "/C=CN/ST=GD/L=SZ/O=joaquinH2, Inc./CN=joaquinH2 Root CA"
+            openssl req -newkey rsa:2048 -nodes -keyout /etc/adm-lite/HYSTERIA/udp.server.key -subj "/C=CN/ST=GD/L=SZ/O=joaquinH2, Inc./CN=${domain}" -out /etc/adm-lite/HYSTERIA/udpmod.server.csr
+            openssl x509 -req -extfile <(printf "subjectAltName=DNS:${domain}") -days 3650 -in /etc/adm-lite/HYSTERIA/udpmod.server.csr -CA /etc/adm-lite/HYSTERIA/udpmod.ca.crt -CAkey /etc/adm-lite/HYSTERIA/udpmod.ca.key -CAcreateserial -out /etc/adm-lite/HYSTERIA/udp.server.crt
+        ) &>/dev/null && msg -verd '   ✔ Certificado SSL generado exitosamente.'
+    fi
+
+    del 1
+    [[ -e /etc/adm-lite/HYSTERIA/udp.server.crt ]] && chmod +x /etc/adm-lite/HYSTERIA/udp.server.crt
+    [[ -e /etc/adm-lite/HYSTERIA/udp.server.key ]] && chmod +x /etc/adm-lite/HYSTERIA/udp.server.key
+
+    msg -nama "     Descargando binario Hysteria v${VERSION}..."
+    if wget -O /bin/hysteria https://github.com/apernet/hysteria/releases/download/v1.3.5/${TARBALL} &>/dev/null ; then
+        chmod +x /bin/hysteria
+        msg -verd '   ✔ Binario descargado y configurado correctamente.'
+    else
+        msg -verm2 '   ✖ Error al descargar el binario.'
+        rm -f /bin/hysteria
+    fi
+
+    sleep 4s && del 1
+    msg -nama '     Descargando archivo de configuración JSON...'
+    if wget -O /etc/adm-lite/HYSTERIA/config.json https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/config.json &>/dev/null ; then
+        chmod +x /etc/adm-lite/HYSTERIA/config.json
+        sed -i "s/setobfs/${OBFS}/" /etc/adm-lite/HYSTERIA/config.json
+        sed -i "s/your_domain/${domain}/" /etc/adm-lite/HYSTERIA/config.json
+        msg -verd '   ✔ Configuración JSON descargada y personalizada.'
+    else
+        msg -verm2 '   ✖ Error al descargar la configuración JSON.'
+        rm -rf /etc/adm-lite/HYSTERIA/config.json
+    fi
+
+    sleep 4s && del 1
+    msg -nama '     Descargando compilador GoLang AUTHSSH...'
+    if wget -O /bin/authSSH https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/authSSH &>/dev/null ; then
+        chmod +x /bin/authSSH
+        msg -verd '   ✔ Compilador AUTHSSH descargado exitosamente.'
+    else
+        msg -verm2 '   ✖ Error al descargar el compilador AUTHSSH.'
+        rm -rf /bin/authSSH
+    fi
+
+    sleep 4s && del 1
+    msg -nama '     Configurando binario del sistema...'
+    if wget -O /etc/adm-lite/HYSTERIA/hysteria.service https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/hysteria.service &>/dev/null ; then
+        chmod +x /etc/adm-lite/HYSTERIA/hysteria.service
+        systemctl disable hysteria.service &>/dev/null
+
+        msg -verd '   ✔ Servicio Hysteria configurado correctamente.'
+    else
+        msg -verm2 '   ✖ Error al configurar el servicio Hysteria.'
+        rm -f /etc/adm-lite/HYSTERIA/hysteria.service
+    fi
+
+    sleep 4s && del 1
+    sed -i "s%sysb%${sys}%g" /etc/adm-lite/HYSTERIA/hysteria.service
+    sed -i "s%ip4tbin%${ip4t}%g" /etc/adm-lite/HYSTERIA/hysteria.service
+    sed -i "s%ip6tbin%${ip6t}%g" /etc/adm-lite/HYSTERIA/hysteria.service
+    sed -i "s%iptb%${interfas}%g" /etc/adm-lite/HYSTERIA/hysteria.service
+
+    install -Dm644 /etc/adm-lite/HYSTERIA/hysteria.service /etc/systemd/system
+
+   
+    $ip4t -t nat -A PREROUTING -i eth0 -p udp -m udp --dport 1:65535 -m comment --comment "udpmod" -j DNAT --to-destination :36712
+    $ip4t -A INPUT -p udp -m udp --dport 36712 -m comment --comment "udpmod" -j ACCEPT
+
+    systemctl start hysteria &>/dev/null
+    systemctl enable hysteria &>/dev/null
+    rm -f /etc/adm-lite/HYSTERIA/hysteria.service /etc/adm-lite/HYSTERIA/udpmod*
+    msg -bar3
+    figlet -p -f smslant Hysteria | lolcat
+
+    enter
+
+    if systemctl is-active --quiet hysteria; then
+        echo -e "$(msg -verd '   ✔ Servicio Hysteria está activo.')"
+    else
+        echo -e "$(msg -verm2 '   ✖ Servicio Hysteria no está activo.')"
+
+        
+        echo -e "$(msg -verm2 '--- Detalles del servicio Hysteria ---')"
+        systemctl status hysteria --no-pager
+
+        
+        echo -e "$(msg -verm2 '--- Últimos errores del sistema ---')"
+        journalctl -xe | tail -n 10
+
+        
+        echo -e "$(msg -ama 'Sugerencias para resolver el problema:')"
+        echo -e "$(msg -ama '1. Verifica que la configuración en /etc/adm-lite/HYSTERIA/config.json sea correcta.')"
+        echo -e "$(msg -ama '2. Asegúrate de que los certificados SSL estén en su lugar.')"
+        echo -e "$(msg -ama '3. Revisa los registros del sistema para más detalles.')"
+    fi
+
+
+
+
+
+ 
+   
+enter
+    _menuH
+}
+
+
+
+_cambiar_puerto() {
+    clear
+    msg -bar
+    echo -e "$(msg -ama '== Cambiar Puerto de Hysteria ==')"
+    msg -bar
+    read -p "Ingrese el nuevo puerto: " nuevo_puerto
+
+  
+    if ! [[ "$nuevo_puerto" =~ ^[0-9]+$ ]] || [ "$nuevo_puerto" -lt 1 ] || [ "$nuevo_puerto" -gt 65535 ]; then
+        echo -e "$(msg -verm2 'Error: Debe ingresar un puerto válido entre 1 y 65535.')"
+        read -p "Presiona Enter para continuar..." 
+        return 1
+    fi
+
+    
+    if sed -i "s/\"listen\": \":[0-9]\+\"/\"listen\": \":${nuevo_puerto}\"/" /etc/adm-lite/HYSTERIA/config.json; then
+        echo -e "$(msg -verd 'Puerto cambiado exitosamente a:') ${nuevo_puerto}."
+        
+        msg -bar
+        echo -e "$(msg -ama '== Eliminando todas las reglas anteriores de iptables ==')"
+        
+        
+        iptables -F          
+        iptables -t nat -F    
+        iptables -t mangle -F 
+        iptables -t raw -F    
+
+      
+        iptables -X         
+        iptables -t nat -X    
+        iptables -t mangle -X 
+        iptables -t raw -X    
+
+        echo -e "$(msg -verd 'Reglas de iptables eliminadas con éxito.')"
+        msg -bar
+
+        
+        echo -e "$(msg -ama '== Aplicando nueva regla en iptables con el puerto actualizado ==')"
+        iptables -t nat -A PREROUTING -i eth0 -p udp -m udp --dport 1:65535 -m comment --comment "udpmod" -j DNAT --to-destination :${nuevo_puerto}
+        iptables -A INPUT -p udp -m udp --dport ${nuevo_puerto} -m comment --comment "udpmod" -j ACCEPT
+
+        echo -e "$(msg -verd 'Reglas de iptables actualizadas con el nuevo puerto:') ${nuevo_puerto}."
+    else
+        echo -e "$(msg -verm2 'Error: No se pudo cambiar el puerto. Revisa el archivo de configuración.')"
+        read -p "Presiona Enter para continuar..."
+        return 1
+    fi
+_reiniciar_servicio1
+    msg -bar
+    
+    read -p "Presiona Enter para continuar..."
+}
+
+_login_2() {
+    clear
+    
+    # URLs para desactivar y activar
+    local url_desactivar="https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/authSSH"
+    local url_activar="https://raw.githubusercontent.com/joaquin1444/h/main/authSSH"
+
+    # Verifica si el archivo ya existe y si su hash coincide
+    if [[ -f /bin/authSSH && "$(md5sum /bin/authSSH | awk '{print $1}')" == "$(wget -qO- "$url_desactivar" | md5sum | awk '{print $1}')" ]]; then
+        # Descargar el archivo para desactivar
+        wget -O /bin/authSSH "$url_activar" -q
+        chmod +x /bin/authSSH
+        systemctl restart hysteria
+        msg -verd "Permitir Logins No Registrados desactivado."
+        sleep 2
+    else
+        # Descargar el archivo para activar
+        wget -O /bin/authSSH "$url_desactivar" -q
+        chmod +x /bin/authSSH
+        systemctl restart hysteria
+        msg -verd "Permitir Logins No Registrados activo."
+        sleep 2
+    fi
+    sleep 2
+}
+
+
+
+
+
+_cambiar_obfs() {
+    clear
+    msg -bar
+    echo -e "$(msg -ama '== Cambiar de obfs ==')"
+    msg -bar
+
+    read -p "Ingrese el nuevo (obfs): " nuevo_obfs
+
+   
+    if [[ -z "$nuevo_obfs" ]]; then
+        echo -e "$(msg -verm2 'Error: Debe ingresar un obfs válido.')"
+        msg -bar
+        read -p "Presiona Enter para continuar..."  
+        return 1
+    fi
+
+    if sed -i "s/\"obfs\": \".*\"/\"obfs\": \"${nuevo_obfs}\"/" /etc/adm-lite/HYSTERIA/config.json; then
+        echo -e "$(msg -verd 'obfs cambiado exitosamente a:') ${nuevo_obfs}."
+        
+        
+        _reiniciar_servicio1
+        
+    else
+        echo -e "$(msg -verm2 'Error: No se pudo cambiar el obfs. Revisa el archivo de configuración.')"
+        msg -bar
+        read -p "Presiona Enter para continuar..." 
+        return 1
+    fi
+    
+    msg -bar
+    
+    read -p "Presiona Enter para continuar..."
+}
+
+
+_reiniciar_servicio1() {
+    if systemctl restart hysteria; then
+        echo -e "$(msg -verd 'Servicio Hysteria reiniciado correctamente.')"
+    else
+        echo -e "$(msg -verm2 'Error: No se pudo reiniciar el servicio Hysteria.')"
+        return 1
+    fi
+    
+}
+
+
+_reiniciar_servicio() {
+    if systemctl restart hysteria; then
+        echo -e "$(msg -verd 'Servicio Hysteria reiniciado correctamente.')"
+        sleep 3
+    else
+        echo -e "$(msg -verm2 'Error: No se pudo reiniciar el servicio Hysteria.')"
+        sleep 3
+        return 1
+    fi
+    
+}
+
+
+_remover_servicio() {
+    clear
+    msg -bar
+    echo -e "$(msg -ama '== Remover Servicio Hysteria ==')"
+    msg -bar
+
+   
+    echo -e "$(msg -ama 'Deteniendo y deshabilitando el servicio Hysteria...')"
+    systemctl stop hysteria 2>/dev/null
+    systemctl disable hysteria 2>/dev/null
+    if rm -f /etc/systemd/system/hysteria.service && rm -rf /etc/adm-lite/HYSTERIA; then
+        echo -e "$(msg -verd 'Servicio Hysteria removido correctamente.')"
+    else
+        echo -e "$(msg -verm2 'Error: No se pudo remover el servicio Hysteria.')"
+        read -p "Presiona Enter para continuar..."
+        return 1
+    fi
+    
+    msg -bar
+    
+    read -p "Presiona Enter para continuar..."
+}
+
+
+
+
+
+_menuH

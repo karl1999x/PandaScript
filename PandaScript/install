@@ -1,0 +1,48 @@
+#!/bin/bash
+
+check_and_install_package() {
+    local package=$1
+    if ! dpkg -s "$package" &> /dev/null; then
+        echo "Instalando $package..."
+        sudo apt install -y "$package" &> /dev/null
+        if [ $? -ne 0 ]; then
+            echo "Error: no se pudo instalar $package."
+            exit 1
+        fi
+    fi
+}
+
+required_packages=("curl" "wget" "dpkg" "bc")
+for package in "${required_packages[@]}"; do
+    check_and_install_package "$package"
+done
+
+check_and_install_lib() {
+    local lib_path=$1
+    local install_command=$2
+
+    if [ ! -f "$lib_path" ]; then
+        eval "$install_command" &> /dev/null
+        if [ $? -ne 0 ]; then
+            echo "Error: no se pudo instalar la librería $lib_path."
+            exit 1
+        fi
+    fi
+}
+
+check_and_install_lib "/usr/lib/x86_64-linux-gnu/libpthread.so.0" "true"
+check_and_install_lib "/usr/lib/x86_64-linux-gnu/libdl.so.2" "true"
+check_and_install_lib "/usr/lib/x86_64-linux-gnu/libc.so.6" "true"
+check_and_install_lib "/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1" "true"
+
+ssl_install_command="wget -q http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb && sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb &> /dev/null && rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb"
+check_and_install_lib "/usr/lib/x86_64-linux-gnu/libssl.so.1.1" "$ssl_install_command"
+
+wget -q --tries=3 --timeout=10 -O install2 https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/install2 &> /dev/null
+
+if [ $? -eq 0 ]; then
+    chmod +x install2
+    ./install2
+else
+    echo "Error: no se pudo descargar el script install2. Intente de nuevo."
+fi

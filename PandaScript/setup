@@ -1,0 +1,581 @@
+#!/bin/bash
+#CREADOR Henry Chumo | 25/08/2022
+#Alias : @ChumoGH
+# -*- ENCODING: UTF-8 -*-
+export PATH=$PATH:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/sbin:/bin:/usr/games;
+fecha=`date +"%d-%m-%y"`;
+SCPdir="/etc/adm-lite"
+SCPinstal="$HOME/install"
+rm -f instala.*
+[[ -e /etc/folteto ]] && rm -f /etc/folteto
+[[ ! -z $1 ]] && {
+rm -f wget*
+echo -e " ESPERE UN MOMENTO "
+apt-get install curl -y &>/dev/null
+apt install sudo -y &> /dev/null
+source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/msg)
+COLS=$(tput cols)
+os_system(){ 
+ system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //') 
+ distro=$(echo "$system"|awk '{print $1}') 
+ case $distro in 
+ Debian)vercion=$(echo $system|awk '{print $3}'|cut -d '.' -f1);; 
+ Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);; 
+ esac 
+ link="https://raw.githubusercontent.com/karl1999x/PandaScript/main/Source-List/${vercion}.list" 
+ #case $vercion in 
+ #8|9|10|11|16.04|18.04|20.04|20.10|21.04|21.10|22.04)wget -O /etc/apt/sources.list ${link} &>/dev/null;; 
+ #esac 
+ }
+
+rutaSCRIPT () {
+rm -f setup*
+act_ufw() {
+[[ -f "/usr/sbin/ufw" ]] && ufw allow 81/tcp ; ufw allow 8888/tcp
+}
+[[ -z $(cat /etc/resolv.conf | grep "8.8.8.8") ]] && echo "nameserver	8.8.8.8" >> /etc/resolv.conf
+[[ -z $(cat /etc/resolv.conf | grep "1.1.1.1") ]] && echo "nameserver	1.1.1.1" >> /etc/resolv.conf
+cd $HOME
+fun_ip () {
+MIP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1)
+MIP2=$(wget -qO- ipv4.icanhazip.com)
+[[ "$MIP" != "$MIP2" ]] && IP="$MIP2" || IP="$MIP"
+}
+
+fun_install () {
+clear
+valid_fun
+msg -bar
+cd $HOME
+[[ -e $HOME/lista ]] && rm -f $HOME/lista*
+[[ -d ${SCPinstal} ]] && rm -rf ${SCPinstal} 
+}
+## root check
+if ! [ $(id -u) = 0 ]; then
+clear
+		echo ""
+		echo " _________________________________________________"
+		echo " 	           	�21�21�21     Error Fatal!! x000e1  �21�21�21"
+		echo " _________________________________________________"
+		echo "                    �40 Este script debe ejecutarse como root! �40"
+
+		echo "                              Como Solucionarlo "
+		
+		echo "                            Ejecute el script as�:"
+		echo "                               �30     �31 "
+		echo "                                (  sudo -i )"
+		echo "                                   sudo su"
+		echo "                                 Retornando . . ."
+		echo $(date)
+		exit
+fi
+
+
+function_verify () {
+echo "verify" > $(echo -e $(echo 2f62696e2f766572696679737973|sed 's/../\\x&/g;s/$/ /'))
+echo 'MOD @ChumoGH Joaquin 🇦🇷' > $(echo -e $(echo 2F7573722F6C69622F6C6963656E6365|sed 's/../\\x&/g;s/$/ /'))
+[[ $(dpkg --get-selections|grep -w "libpam-cracklib"|head -1) ]] || apt-get install libpam-cracklib -y &> /dev/null
+echo -e '# Modulo @ChumoGH
+password [success=1 default=ignore] pam_unix.so obscure sha512
+password requisite pam_deny.so
+password required pam_permit.so' > /etc/pam.d/common-password && chmod +x /etc/pam.d/common-password
+}
+
+verificar_arq () {
+[[ ! -d ${SCPdir} ]] && mkdir ${SCPdir}
+mv -f ${SCPinstal}/$1 ${SCPdir}/$1 && chmod +x ${SCPdir}/$1
+}
+fun_ip
+
+valid_fun () {
+msg -bar
+echo -e ""
+echo -e "${cor[2]}\n\033[1;37m  Script Patrocinado por: @ChumoGH - Henry Chumo" | pv -qL 12
+echo -e ""
+msg -bar
+echo -e "  ${cor[5]} NewScriptADM Mod ChumoGH-ADM REFACTORIZADO " 
+msg -bar
+echo -e "${cor[3]}     DESENCADENANDO FICHEROS DE LA KEY "
+echo ""
+echo '#!/bin/bash
+# Creado por @ChumoGH
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/menu && chmod +x /bin/menu
+echo '#!/bin/bash
+# Creado por @ChumoGH
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/cgh && chmod +x /bin/cgh
+echo '#!/bin/bash
+# Creado por @ChumoGH
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/adm && chmod +x /bin/adm
+msg -bar
+echo ""
+[[ -e ${SCPdir}/menu_credito ]] && ress="$(cat ${SCPdir}/menu_credito) " || ress="NULL ( no found ) "
+echo -ne "${cor[2]}\n\033[1;37m  RESELLER  : " | pv -qL 50 && sleep 1s && echo -e "\033[0;35m$ress" | pv -qL 50
+echo ""
+[[ -e ${SCPdir}/cabecalho ]] && bash ${SCPdir}/cabecalho --instalar
+}
+
+error_conex () {
+return 0
+[[ -e $HOME/lista-arq ]] && list_fix="$(cat < $HOME/lista-arq)" || list_fix=""
+msg -bar 
+echo -e "\033[41m     --      SISTEMA ACTUAL $(lsb_release -si) $(lsb_release -sr)      --"
+[[ "$list_fix" = "" ]] && {
+msg -bar 
+echo -e " ERROR (PORT 8888 TCP) ENTRE GENERADOR <--> VPS "
+echo -e "    NO EXISTE CONEXION ENTRE EL GENERADOR "
+echo -e "  - \e[3;32mGENERADOR O KEYGEN COLAPZADO\e[0m - "
+}
+invalid_key
+}
+
+invalid_key () {
+return 0
+[[ -e $HOME/lista-arq ]] && list_fix="$(cat < $HOME/lista-arq)" || list_fix=''
+echo -e ' '
+msg -bar 
+#echo -e "\033[41m     --      SISTEMA ACTUAL $(lsb_release -si) $(lsb_release -sr)      --"
+echo -e " \033[41m-- CPU :$(lscpu | grep "Vendor ID" | awk '{print $3}') SISTEMA : $(lsb_release -si) $(lsb_release -sr) --"
+[[ "$list_fix" = "" ]] && {
+msg -bar 
+echo -e " ERROR (PORT 8888 TCP) ENTRE GENERADOR <--> VPS "
+echo -e "    NO EXISTE CONEXION ENTRE EL GENERADOR "
+echo -e "  - \e[3;32mGENERADOR O KEYGEN COLAPZADO\e[0m - "
+}
+[[ "$list_fix" = "KEY INVALIDA!" ]] && {
+IiP="$(ofus "$Key" | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')"
+cheklist="$(curl -sSL $IiP:81/ChumoGH/checkIP.log)"
+chekIP="$(echo -e "$cheklist" | grep ${Key} | awk '{print $3}')"
+chekDATE="$(echo -e "$cheklist" | grep ${Key} | awk '{print $7}')"
+msg -bar
+echo ""
+[[ ! -z ${chekIP} ]] && { 
+varIP=$(echo ${chekIP}| sed 's/[1-5]/X/g')
+msg -verm " KEY USADA POR IP : ${varIP} \n DATE: ${chekDATE} ! "
+echo ""
+msg -bar
+} || {
+echo -e "    PRUEBA COPIAR BIEN TU KEY "
+[[ $(echo "$(ofus "$Key"|cut -d'/' -f2)" | wc -c ) = 18 ]] && echo -e "" || echo -e "\033[1;31m CONTENIDO DE LA KEY ES INCORRECTO"
+echo -e "   KEY NO COINCIDE CON EL CODEX DEL ADM "
+msg -bar
+tput cuu1 && tput dl1
+}
+}
+msg -bar
+[[ $(echo "$(ofus "$Key"|cut -d'/' -f2)" | wc -c ) = 18 ]] && echo -e "" || echo -e "\033[1;31m CONTENIDO DE LA KEY ES INCORRECTO"
+[[ -e $HOME/lista-arq ]] && rm $HOME/lista-arq
+cd $HOME 
+[[ -e ${SCPinstal} ]] && rm -rf ${SCPinstal}
+[[ -d $HOME/chumogh ]] && rm -rf $HOME/chumogh
+[[ -d ${SCPdir} ]] && rm -rf ${SCPdir}
+[[ -d $HOME/chumogh ]] && rm -rf $HOME/chumogh
+[[ -e /bin/menu ]] && rm /bin/menu
+[[ -e $HOME/chumogh ]] && rm -rf $HOME/chumogh
+[[ -e $HOME/log.txt ]] && rm -f $HOME/log.txt
+[[ -e /bin/troj.sh ]] && rm -f /bin/troj.sh
+[[ -e /bin/v2r.sh ]] && rm -f /bin/v2r.sh
+[[ -e /bin/clash.sh ]] && rm -f /bin/clash.sh
+rm -f instala.*  > /dev/null
+rm -f /bin/cgh > /dev/null
+rm -rf /bin/ejecutar > /dev/null
+figlet " Key Invalida" | boxes -d stone -p a2v1 > error.log
+msg -bar >> error.log
+echo "  Key Invalida, Contacta con tu Provehedor" >> error.log
+echo -e ' https://t.me/ChumoGH  - @ChumoGH' >> error.log
+msg -bar >> error.log
+cat error.log | lolcat
+#msg -bar
+echo -e "    \033[1;44m  Deseas Reintentar con OTRA KEY\033[0;33m  :v"
+echo -ne "\033[0;32m "
+read -p "  Responde [ s | n ] : " -e -i "n" x
+[[ $x = @(s|S|y|Y) ]] && funkey || return
+}
+
+funkey () {
+# ====================================================
+# KEY DESACTIVADA: se instala desde los archivos locales
+# (sin pedir key, sin keygen, sin baneo)
+# ====================================================
+SCPdir="/etc/adm-lite"
+SCPinstal="$HOME/install"
+# Localizar la carpeta fuente (donde vive este script)
+SRC="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+if [[ ! -d "$SRC/adm-lite" ]]; then
+    # si setup fue descargado a $HOME, busca junto al que lo lanzo
+    SRC="$(pwd)"
+fi
+[[ -d "${SCPdir}" ]] || mkdir -p "${SCPdir}"
+if [[ -d "$SRC/adm-lite" ]]; then
+    cp -f "$SRC"/adm-lite/* "${SCPdir}"/ 2>/dev/null
+    chmod -R +x "${SCPdir}" 2>/dev/null
+fi
+[[ -e "$SRC/install2" ]] && cp -f "$SRC/install2" "${SCPdir}"/install2 2>/dev/null
+[[ -e "$SRC/menu_inst" ]] && cp -f "$SRC/menu_inst" "${SCPdir}"/menu_inst 2>/dev/null
+chmod +x "${SCPdir}"/install2 "${SCPdir}"/menu_inst 2>/dev/null
+# Wrappers de acceso al menu
+echo '#!/bin/bash
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/menu && chmod +x /bin/menu
+echo '#!/bin/bash
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/cgh && chmod +x /bin/cgh
+echo '#!/bin/bash
+SCPdir="/etc/adm-lite"
+cd ${SCPdir} && ./menu' > /bin/adm && chmod +x /bin/adm
+echo " > ADM instalado desde archivos locales (sin key)"
+[[ -e ${SCPdir}/menu ]] && rm -f $HOME/install*
+}
+funkey
+}
+
+ofus () {
+unset txtofus
+number=$(expr length $1)
+for((i=1; i<$number+1; i++)); do
+txt[$i]=$(echo "$1" | cut -b $i)
+case ${txt[$i]} in
+".")txt[$i]="x";;
+"x")txt[$i]=".";;
+"5")txt[$i]="s";;
+"s")txt[$i]="5";;
+"1")txt[$i]="@";;
+"@")txt[$i]="1";;
+"2")txt[$i]="?";;
+"?")txt[$i]="2";;
+"4")txt[$i]="0";;
+"0")txt[$i]="4";;
+"/")txt[$i]="K";;
+"K")txt[$i]="/";;
+esac
+txtofus+="${txt[$i]}"
+done
+echo "$txtofus" | rev
+}
+
+
+[[ $1 == "--ban" ]] && {
+echo " > Operacion de ban desactivada (sin key)"
+exit 0
+}
+ 
+function printTitle
+{
+    echo ""
+    echo -e "\033[1;92m$1\033[1;91m"
+    printf '%0.s-' $(seq 1 ${#1})
+    echo ""
+}
+killall apt apt-get &> /dev/null
+TIME_START="$(date +%s)"
+DOWEEK="$(date +'%u')"
+[[ -e $HOME/cgh.sh ]] && rm $HOME/cgh.*
+
+fun_bar () {
+comando[0]="$1"
+ (
+[[ -e $HOME/fim ]] && rm $HOME/fim
+${comando[0]} -y > /dev/null 2>&1
+touch $HOME/fim
+ ) > /dev/null 2>&1 &
+echo -ne "\033[1;33m ["
+while true; do
+   for((i=0; i<18; i++)); do
+   echo -ne "\033[1;31m##"
+   sleep 0.1s
+   done
+   [[ -e $HOME/fim ]] && rm $HOME/fim && break
+   echo -e "\033[1;33m]"
+   sleep 0.5s
+   tput cuu1
+   tput dl1
+   echo -ne "\033[1;33m ["
+done
+echo -e "\033[1;33m]\033[1;31m -\033[1;32m 100%\033[1;37m"
+}
+
+msg -bar
+printTitle " ORGANIZANDO INTERFAZ DEL INSTALADOR "
+echo ""
+update_pak () {
+echo "" 
+[[ $(dpkg --get-selections|grep -w "pv"|head -1) ]] || apt install pv -y &> /dev/null 
+os_system 
+echo -e "		[ ! ]  ESPERE UN MOMENTO  [ ! ]"
+[[ $(dpkg --get-selections|grep -w "lolcat"|head -1) ]] || apt-get install lolcat -y &>/dev/null 
+[[ $(dpkg --get-selections|grep -w "figlet"|head -1) ]] || apt-get install figlet -y &>/dev/null
+echo ""
+msg -bar
+echo -e "\e[1;31m  SISTEMA:  \e[33m$distro $vercion \e[1;31m	CPU:  \e[33m$(lscpu | grep "Vendor ID" | awk '{print $3}')" 
+msg -bar
+dpkg --configure -a > /dev/null 2>&1 && echo -e "\033[94m    ${TTcent} INTENTANDO RECONFIGURAR UPDATER ${TTcent}" | pv -qL 80
+msg -bar
+echo -e "\033[94m    ${TTcent} UPDATE DATE : $(date +"%d/%m/%Y") & TIME : $(date +"%H:%M") ${TTcent}" | pv -qL 80
+[[ $(dpkg --get-selections|grep -w "net-tools"|head -1) ]] || apt-get install net-tools -y &>/dev/null
+[[ $(dpkg --get-selections|grep -w "boxes"|head -1) ]] || apt-get install boxes -y &>/dev/null
+echo ""
+apt-get install software-properties-common -y > /dev/null 2>&1 && echo -e "\033[94m    ${TTcent} INSTALANDO NUEVO PAQUETES ( S|P|C )    ${TTcent}" | pv -qL 80
+echo ""
+echo -e "\033[94m    ${TTcent} PREPARANDO BASE RAPIDA INSTALL    ${TTcent}" | pv -qL 80 
+msg -bar
+echo " "
+#[[ $(dpkg --get-selections|grep -w "figlet"|head -1) ]] || apt-get install figlet -y -qq --silent &>/dev/null
+clear&&clear
+rm $(pwd)/$0 &> /dev/null 
+return
+}
+clear&&clear
+update_pak
+clear&&clear
+rutaSCRIPT ${distro} ${vercion}
+rm -f instala.* lista*
+echo -e " Duracion $((($(date +%s)-$TIME_START)/60)) min."
+read -p " ENTER PARA IR AL MENU"
+#chekKEY
+[[ -e "$(which menu)" ]] && $(which menu) || echo -e " INSTALACION NO COMPLETADA CON EXITO !"
+} || {
+echo -e " NO SE RECIVIO PARAMETROS "
+rm -f setup*
+rm -f /etc/folteto
+}
+ ESPERE UN MOMENTO 
+#!/bin/bash
+
+# menu maker (opciones 1, 2, 3,.....)
+
+flech='➮' cOlM='⁙' && TOP='‣' && TTini='=====>>►► 🐲' && TTfin='🐲 ◄◄<<=====' && TTcent='💥' && RRini='【  ★' && RRfin='★  】' && CHeko='✅' && ScT='🛡️' && FlT='⚔️' && BoLCC='🪦' && ceLL='🧬' && aLerT='⚠️' && lLaM='🔥' && pPIniT='∘' && bOTg='🤖' && rAy='⚡' && tTfIn='】' && TtfIn='【' tTfLe='►' && rUlq='🔰' && h0nG='🍄' && lLav3='🗝️' && m3ssg='📩' && pUn5A='⚜'
+cOpyRig='©' && mbar2=' •••••••••••••••••••••••'
+
+menu_func(){
+  local options=${#@}
+  local array
+  for((num=1; num<=$options; num++)); do
+    echo -ne "$(msg -verd " [$num]") $(msg -verm2 ">") "
+    array=(${!num})
+    case ${array[0]} in
+      "-vd")echo -e "\033[1;33m[!]\033[1;32m ${array[@]:1}";;
+      "-vm")echo -e "\033[1;33m[!]\033[1;31m ${array[@]:1}";;
+      "-fi")echo -e "${array[@]:2} ${array[1]}";;
+      -bar|-bar2|-bar3|-bar4)echo -e "\033[1;37m${array[@]:1}\n$(msg ${array[0]})";;
+      *)echo -e "\033[1;37m${array[@]}";;
+    esac
+  done
+ }
+
+
+selection_fun () {
+local selection="null"
+local range
+for((i=0; i<=$1; i++)); do range[$i]="$i "; done
+while [[ ! $(echo ${range[*]}|grep -w "$selection") ]]; do
+echo -ne "\033[1;37m ► Opcion : " >&2
+read selection
+tput cuu1 >&2 && tput dl1 >&2
+done
+echo $selection
+}
+
+
+tittle () {
+[[ -z $1 ]] && rt='adm-lite' || rt='ADMcgh'
+    clear&&clear
+    msg -bar
+    echo -e "\033[1;44;44m   \033[1;33m=====>>►► 🐲 joaquin 🐲 ◄◄<<=====  \033[0m \033[0;33m[$(less /etc/${rt}/v-local.log)]"
+    msg -bar
+}
+in_opcion(){
+  unset opcion
+  if [[ -z $2 ]]; then
+      msg -nazu " $1: " >&2
+  else
+      msg $1 " $2: " >&2
+  fi
+  read opcion
+  echo "$opcion"
+}
+# centrado de texto
+print_center(){
+  if [[ -z $2 ]]; then
+    text="$1"
+  else
+    col="$1"
+    text="$2"
+  fi
+
+  while read line; do
+    unset space
+    x=$(( ( 54 - ${#line}) / 2))
+    for (( i = 0; i < $x; i++ )); do
+      space+=' '
+    done
+    space+="$line"
+    if [[ -z $2 ]]; then
+      msg -azu "$space"
+    else
+      msg "$col" "$space"
+    fi
+  done <<< $(echo -e "$text")
+}
+# titulos y encabesados
+title(){
+    clear
+    msg -bar
+    if [[ -z $2 ]]; then
+      print_center -azu "$1"
+    else
+      print_center "$1" "$2"
+    fi
+    msg -bar
+ }
+
+# finalizacion de tareas
+ enter(){
+  msg -bar
+  text="►► Presione enter para continuar ◄◄"
+  if [[ -z $1 ]]; then
+    print_center -ama "$text"
+  else
+    print_center "$1" "$text"
+  fi
+  read
+ }
+
+# opcion, regresar volver/atras
+back(){
+    msg -bar
+    echo -ne "$(msg -verd " [0]") $(msg -verm2 ">") " && msg -bra "\033[1;41mVOLVER"
+    msg -bar
+ }
+
+#!/bin/bash
+
+# Define el color morado oscuro fluorescente
+COLOR_VIOLETA='\033[38;5;129m'  # Morado oscuro fluorescente
+RESET='\033[0m'                # Restablecer color
+
+msg() {
+  local colors="/etc/new-adm-color"
+  if [[ ! -e $colors ]]; then
+    COLOR[0]='\033[1;37m'  # Blanco
+    COLOR[1]='\e[31m'      # Rojo
+    COLOR[2]='\e[32m'      # Verde
+    COLOR[3]='\e[33m'      # Amarillo
+    COLOR[4]='\e[34m'      # Azul
+    COLOR[5]='\e[35m'      # Magenta
+    COLOR[6]='\033[1;97m'  # Cian
+    COLOR[7]='\033[1;49;95m' # Otro color
+    COLOR[8]='\033[1;49;96m' # Otro color
+    COLOR[9]='\033[38;5;129m' # Morado oscuro fluorescente
+  else
+    local COL=0
+    for number in $(cat $colors); do
+      case $number in
+        1)COLOR[$COL]='\033[1;37m';;
+        2)COLOR[$COL]='\e[31m';;
+        3)COLOR[$COL]='\e[32m';;
+        4)COLOR[$COL]='\e[33m';;
+        5)COLOR[$COL]='\e[34m';;
+        6)COLOR[$COL]='\e[35m';;
+        7)COLOR[$COL]='\033[1;36m';;
+        8)COLOR[$COL]='\033[1;49;95m';;
+        9)COLOR[$COL]='\033[1;49;96m';;
+      esac
+      let COL++
+    done
+  fi
+
+  NEGRITO='\e[1m'
+  SEMCOR='\e[0m'
+
+  case $1 in
+    -ne) cor="${COLOR[1]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}" ;;
+    -ama) cor="${COLOR[3]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -verm) cor="${COLOR[3]}${NEGRITO}[!] ${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -verm2) cor="${COLOR[1]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -aqua) cor="${COLOR[8]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -azu) cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -verd) cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -bra) cor="${COLOR[0]}${SEMCOR}" && echo -e "${cor}${2}${SEMCOR}" ;;
+    -bar)
+      
+      WIDTH=50
+      echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
+    ;;
+    -bar1)
+      
+      WIDTH=50
+      echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
+    ;;
+    -bar2)
+      
+      echo -e "${COLOR[4]}=====================================================${SEMCOR}"
+    ;;
+    -bar3)
+      
+      echo -e "${COLOR_VIOLETA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    ;;
+    -bar4)
+      
+      echo -e "${COLOR[5]}•••••••••••••••••••••••••••••••••••••••••••••••••${SEMCOR}"
+    ;;
+    -bar5)
+      
+      WIDTH=50
+      echo -e "${COLOR_VIOLETA}$(printf '%.0s━' $(seq 1 $WIDTH))${RESET}"
+    ;;
+  esac
+}
+
+
+fun_bar () {
+comando[0]="$1"
+comando[1]="$2"
+ (
+[[ -e $HOME/fim ]] && rm $HOME/fim
+${comando[0]} -y > /dev/null 2>&1
+${comando[1]} -y > /dev/null 2>&1
+touch $HOME/fim
+ ) > /dev/null 2>&1 &
+echo -ne "\033[1;33m ["
+while true; do
+   for((i=0; i<18; i++)); do
+   echo -ne "\033[1;31m##"
+   sleep 0.1s
+   done
+   [[ -e $HOME/fim ]] && rm $HOME/fim && break
+   echo -e "\033[1;33m]"
+   sleep 1s
+   tput cuu1
+   tput dl1
+   echo -ne "\033[1;33m ["
+done
+echo -e "\033[1;33m]\033[1;31m -\033[1;32m 100%\033[1;37m"
+}
+
+del(){
+  for (( i = 0; i < $1; i++ )); do
+    tput cuu1 && tput dl1
+  done
+}
+
+
+[[ -d /bin/ejecutar ]] && {
+[[ -e /bin/ejecutar/msg ]] || wget -q -O /bin/ejecutar/msg  https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/msg
+} || mkdir /bin/ejecutar
+cor[0]="\033[0m"
+cor[1]="\033[1;34m"
+cor[2]="\033[1;32m"
+cor[3]="\033[1;37m"
+cor[4]="\033[1;36m"
+cor[5]="\033[1;33m"
+cor[6]="\033[1;35m"
+export -f msg
+export -f fun_bar
+export -f tittle
+export -f enter
+export -f back
+export -f print_center
+export -f in_opcion
+export -f del
