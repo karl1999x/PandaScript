@@ -1,11 +1,8 @@
 ------------------------------------------------------------------
 
 <span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>SCRIPT PANDA NO NECESITA KEY</big></span>
-
-
 <p style="text-align: center;">
 <span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>VERIFICACIÓN DE KEY REMOVIDA</big></span>
-
 <p style="text-align: center;">
 <span style="text-align: center;"><span style="color: #00FF00; background-color: #000;"><big><strong>CÓDIGO DESENCRIPTADO COMPLETO Y LIBRE</big></span>
 
