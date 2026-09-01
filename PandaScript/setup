@@ -137,10 +137,26 @@ funkey () {
     wget -q -4 "${GITHUB_RAW}/install2" -O install2 && chmod +x install2
     wget -q -4 "${GITHUB_RAW}/menu_inst" -O menu_inst && chmod +x menu_inst
     wget -q -4 "${GITHUB_RAW}/Otros/v-new.log" -O /etc/adm-lite/local.txt 2>/dev/null
+    [[ ! -s /etc/adm-lite/local.txt ]] && echo "v6=1.4.60" > /etc/adm-lite/local.txt
 
     mkdir -p /bin/ejecutar
     wget -q -O /bin/ejecutar/msg "${GITHUB_RAW}/Otros/ejecutar/msg" 2>/dev/null || cp -f ${SCPdir}/Otros/msg /bin/ejecutar/msg 2>/dev/null
     chmod +x /bin/ejecutar/msg 2>/dev/null
+
+    echo "Verified【 ChumoGH" > /bin/ejecutar/exito
+    echo "v6=1.4.60" > /bin/ejecutar/v-new.log
+    echo "0" > /bin/ejecutar/uskill
+    IP=$(wget -q -4 -O - http://ipv4.icanhazip.com 2>/dev/null | tr -d '[:space:]')
+    [[ -z "$IP" ]] && IP=$(ip addr | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1 | head -1)
+    echo "$IP" > /bin/ejecutar/IPcgh
+    echo "$fecha" > /bin/ejecutar/fecha
+    free -h | grep Mem | sed 's/\s\+/,/g' | cut -d , -f4 > /bin/ejecutar/raml
+    [[ -e ${SCPdir}/menu_credito ]] && cat ${SCPdir}/menu_credito > /bin/ejecutar/menu_credito || echo "ChumoGH" > /bin/ejecutar/menu_credito
+    chmod +x /bin/ejecutar/* 2>/dev/null
+
+    echo "v6" > /etc/ADMcgh/v-local.log
+    echo "v6" > /etc/adm-lite/v-local.log
+    echo "v6=1.4.60" > /etc/adm-lite/local.txt
 
     echo '#!/bin/bash
 SCPdir="/etc/adm-lite"
@@ -152,8 +168,8 @@ cd ${SCPdir} && ./menu' > /bin/cgh && chmod +x /bin/cgh
 SCPdir="/etc/adm-lite"
 cd ${SCPdir} && ./menu' > /bin/adm && chmod +x /bin/adm
 
-    echo "v6" > /etc/ADMcgh/v-local.log
     chmod -R 755 ${SCPdir}
+    chmod +x ${SCPdir}/usercodes ${SCPdir}/menu ${SCPdir}/ferramentas ${SCPdir}/cabecalho 2>/dev/null
     msg -bar
     echo -e "\033[1;32m           >> PandaScript DESCARGADO <<\033[0m"
     msg -bar

@@ -1,0 +1,123 @@
+#!/bin/bash
+# usercodes - CONTROL USUARIOS (SSH/SSL/DROPBEAR)
+# PandaScript MOD
+# -*- ENCODING: UTF-8 -*-
+export PATH=$PATH:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/sbin:/bin:/usr/games
+SCPdir="/etc/adm-lite"
+[[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg || source /etc/adm-lite/Otros/msg 2>/dev/null
+
+valid_fun () {
+    msg -bar
+    echo -e "\e[1;31m     CONTROL DE USUARIOS SSH/SSL "
+    msg -bar
+}
+
+verif_usr () {
+    grep -c "^$1:" /etc/passwd
+}
+
+limpiar_expired () {
+    for u in $(cut -d: -f1 /etc/passwd | grep -v root); do
+        exp=$(chage -l "$u" 2>/dev/null | grep "La cuenta expira" | awk '{print $NF}')
+        [[ "$exp" = "nunca" ]] && continue
+        [[ -z "$exp" ]] && continue
+        if [[ "$(date -d "$exp" +%s 2>/dev/null)" < "$(date +%s)" ]]; then
+            userdel -r "$u" 2>/dev/null
+        fi
+    done
+}
+
+limite_usuarios () {
+    local u="$1"
+    local lim="$2"
+    [[ -z "$lim" ]] && lim=1
+    local count=0
+    for pid in $(pgrep -f "sshd:.*@pts" 2>/dev/null | head -50); do
+        local uu
+        uu=$(readlink /proc/$pid/fd/0 2>/dev/null | grep -oE "[a-zA-Z0-9_-]+$")
+        [[ "$uu" = "$u" ]] && ((count++))
+    done
+    if [[ "$count" -ge "$lim" ]]; then
+        msg -verm " USUARIO: $u alcanzo el limite de conexiones ($lim)"
+    fi
+}
+
+crear_usuario () {
+    valid_fun
+    echo -ne "\033[1;33m NOMBRE DE USUARIO : \033[0m" && read u
+    [[ -z "$u" ]] && { msg -verm "Nombre vacio"; return; }
+    if [[ "$(verif_usr $u)" -gt 0 ]]; then
+        msg -verm "EL USUARIO YA EXISTE"
+        sleep 2
+        return
+    fi
+    echo -ne "\033[1;33m NOMBRE DE PASSWORD : \033[0m" && read p
+    echo -ne "\033[1;33m LIMITE DE CONEXIONES : \033[0m" && read lim
+    cmd_useradd=$(useradd -M -s /bin/false -p "$(openssl passwd -1 "$p")" "$u")
+    [[ "$?" -eq 0 ]] && msg -verd "USUARIO $u CREADO" || msg -verm "FALLO AL CREAR"
+    read -p " Enter para Continuar"
+}
+
+listar_usuarios () {
+    valid_fun
+    echo -e "\033[1;32m USUARIOS CREADOS"
+    msg -bar
+    for u in $(cut -d: -f1 /etc/passwd); do
+        shell=$(grep "^$u:" /etc/passwd | cut -d: -f7)
+        if [[ "$shell" = "/bin/false" || "$shell" = "/usr/sbin/nologin" ]]; then
+            exp=$(chage -l "$u" | grep "La cuenta expira" | awk '{print $NF}')
+            echo -e "\033[1;37m Usuario: \033[1;32m$u \033[1;37m Exp: \033[1;33m${exp:-nunca}"
+        fi
+    done
+    msg -bar
+    read -p " Enter para Continuar"
+}
+
+borrar_usuario () {
+    valid_fun
+    echo -ne "\033[1;33m USUARIO A BORRAR : \033[0m" && read u
+    [[ "$(verif_usr $u)" -eq 0 ]] && { msg -verm "NO EXISTE"; return; }
+    userdel -r "$u" 2>/dev/null
+    msg -verd " USUARIO $u ELIMINADO"
+    sleep 2
+}
+
+cambiar_password () {
+    valid_fun
+    echo -ne "\033[1;33m USUARIO : \033[0m" && read u
+    echo -ne "\033[1;33m NUEVO PASSWORD : \033[0m" && read p
+    echo -e "$p\n$p\n" | passwd "$u" 2>/dev/null
+    msg -verd "CONTRASEÑA CAMBIADA"
+    sleep 2
+}
+
+monitor_conexiones () {
+    valid_fun
+    echo -e "\033[1;32m CONEXIONES ACTIVAS"
+    msg -bar
+    who 2>/dev/null
+    msg -bar
+    read -p " Enter para Continuar"
+}
+
+while true; do
+    clear&&clear
+    valid_fun
+    echo -e " \033[1;37m[\033[1;36m1\033[1;37m]\033[1;33m CREAR USUARIO"
+    echo -e " \033[1;37m[\033[1;36m2\033[1;37m]\033[1;33m LISTAR USUARIOS"
+    echo -e " \033[1;37m[\033[1;36m3\033[1;37m]\033[1;33m BORRAR USUARIO"
+    echo -e " \033[1;37m[\033[1;36m4\033[1;37m]\033[1;33m CAMBIAR PASSWORD"
+    echo -e " \033[1;37m[\033[1;36m5\033[1;37m]\033[1;33m CONEXIONES ACTIVAS"
+    echo -e " \033[1;37m[\033[1;36m0\033[1;37m]\033[1;33m [ SALIR ]"
+    msg -bar
+    echo -ne "\033[1;37m Opcion: "
+    read select
+    case $select in
+        1) crear_usuario ;;
+        2) listar_usuarios ;;
+        3) borrar_usuario ;;
+        4) cambiar_password ;;
+        5) monitor_conexiones ;;
+        0) killall usercodes 2>/dev/null; exit ;;
+    esac
+done
