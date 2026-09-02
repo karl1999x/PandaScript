@@ -1,0 +1,79 @@
+#!/bin/bash
+# by @joaquinH2
+
+ADDR=$1
+AUTH=$2
+SEND=$3
+RECV=$4
+
+
+if [[ $(echo -e "${AUTH}" | grep -i ':') ]]; then
+    pUSER=$(echo -e "${AUTH}" | cut -d ':' -f1)
+    CLAVE=$(echo -e "${AUTH}" | cut -d ':' -f2)
+    ofusMODE=1
+else
+    pUSER=${AUTH}
+    ofusMODE=0
+fi
+
+
+if [[ $(cat "/etc/passwd" | grep -w "${pUSER}") ]]; then
+    FValid=$(date +%s)
+    UValid=$(chage -l "${pUSER}" | grep -i co | cut -d ':' -f2)
+    DataSEC=$(date +%s --date="${UValid}")
+
+
+    if [[ ${FValid} -gt ${DataSEC} ]]; then
+        echo -e "AUTENTIFICACION FALLIDA POR USUARIO CADUCADO : ${pUSER} "
+        exit 1
+    fi
+
+   
+    if [[ ${ofusMODE} = 1 ]]; then
+       
+        if [[ -e /etc/adm-lite/userDIR/${pUSER} ]]; then
+            _PASS=$(grep "senha" /etc/adm-lite/userDIR/${pUSER} | cut -d ":" -f2 | sed 's/\s\+//g')
+            LIMIT_CHECK=$(grep "limite" /etc/adm-lite/userDIR/${pUSER})
+
+            if [[ ${LIMIT_CHECK} == *"TOKEN"* ]]; then
+                
+                TOKEN_PASS=$(cat /bin/ejecutar/token)
+
+                if [[ ${CLAVE} = ${TOKEN_PASS} ]]; then
+                    echo -e "AUTENTIFICACION EXITOSA PARA TOKEN : ${pUSER} "
+                    exit 0
+                else
+                    echo -e "AUTENTIFICACION FALLIDA / CLAVE INVALIDA PARA TOKEN : ${pUSER} "
+                    exit 1
+                fi
+            elif [[ ${LIMIT_CHECK} == *"HWID"* ]]; then
+                
+                if [[ ${CLAVE} = ${pUSER} ]]; then
+                    echo -e "AUTENTIFICACION EXITOSA PARA HWID : ${pUSER} "
+                    exit 0
+                else
+                    echo -e "AUTENTIFICACION FALLIDA / CLAVE INVALIDA PARA HWID : ${pUSER} "
+                    exit 1
+                fi
+            else
+                
+                if [[ ${CLAVE} = ${_PASS} ]]; then
+                    echo -e "AUTENTIFICACION EXITOSA / CLAVE VALIDA : ${AUTH} / ${_PASS} "
+                    exit 0
+                else
+                    echo -e "AUTENTIFICACION FALLIDA / CLAVE INVALIDA : ${pUSER} / ${_PASS}"
+                    exit 1
+                fi
+            fi
+        else
+            echo -e "AUTENTIFICACION FALLIDA / USER NO EXISTE : ${pUSER} "
+            exit 1
+        fi
+    else
+        echo -e "AUTENTIFICACION EXITOSA PARA : ${pUSER} "
+        exit 0
+    fi
+else
+    echo -e "AUTENTIFICACION FALLIDA / USER NO EXISTE : ${pUSER} "
+    exit 1
+fi
