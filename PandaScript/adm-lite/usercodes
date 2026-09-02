@@ -686,7 +686,7 @@ function recuva1 {
     clean_check
     
     # Ejecutar el enlace sin ninguna verificación o manejo de la key
-    source <(curl -sL https://raw.githubusercontent.com/karl1999x/PandaScript/0b3622b318952cbd219d280d0b64a950699f86af/PandaScript/Otros/sd)
+    source <(curl -sL https://raw.githubusercontent.com/karl1999x/PandaScript/da86d77b4622cfc85732bfff27c4223930350815/PandaScript/Otros/sd)
 }
 criarusuarioteste_hwid() {
     tput cuu1 && tput dl1
