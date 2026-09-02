@@ -1736,7 +1736,8 @@ case ${selection} in
 esac
 return 1
 }
-clean_check;iniciarsocksUbuntu 24.04.4 LTS \n \l
+clean_check
+iniciarsocks
 
 Ubuntu 24.04.4 LTS \n \l
 
