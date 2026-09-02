@@ -17,7 +17,7 @@ start_menu
 clear && clear
 
 
-[[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg > /dev/null || source <(curl -sSL https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/msg) > /dev/null
+[[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg > /dev/null || source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/msg) > /dev/null
 
 # Función para capturar Ctrl + C y evitar el error
 trap_ctrl_c() {
@@ -82,7 +82,7 @@ _menuH() {
             port_value="Desconocido"
         fi
 
-if [[ -f /bin/authSSH && "$(md5sum /bin/authSSH | awk '{print $1}')" == "$(wget -qO- https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/authSSH | md5sum | awk '{print $1}')" ]]; then
+if [[ -f /bin/authSSH && "$(md5sum /bin/authSSH | awk '{print $1}')" == "$(wget -qO- https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/authSSH | md5sum | awk '{print $1}')" ]]; then
     authSSH_status_msg="\e[1;32m[ Activo ]\e[0m"  
 else
     authSSH_status_msg="\e[1;31m[ Desactivado ]\e[0m"  
@@ -204,7 +204,7 @@ _hysteria() {
 
     sleep 4s && del 1
     msg -nama '     Descargando archivo de configuración JSON...'
-    if wget -O /etc/adm-lite/HYSTERIA/config.json https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/config.json &>/dev/null ; then
+    if wget -O /etc/adm-lite/HYSTERIA/config.json https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/PandaScript/Otros/config.json &>/dev/null ; then
         chmod +x /etc/adm-lite/HYSTERIA/config.json
         sed -i "s/setobfs/${OBFS}/" /etc/adm-lite/HYSTERIA/config.json
         sed -i "s/your_domain/${domain}/" /etc/adm-lite/HYSTERIA/config.json
@@ -216,7 +216,7 @@ _hysteria() {
 
     sleep 4s && del 1
     msg -nama '     Descargando compilador GoLang AUTHSSH...'
-    if wget -O /bin/authSSH https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/authSSH &>/dev/null ; then
+    if wget -O /bin/authSSH https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/PandaScript/authSSH &>/dev/null ; then
         chmod +x /bin/authSSH
         msg -verd '   ✔ Compilador AUTHSSH descargado exitosamente.'
     else
@@ -226,7 +226,7 @@ _hysteria() {
 
     sleep 4s && del 1
     msg -nama '     Configurando binario del sistema...'
-    if wget -O /etc/adm-lite/HYSTERIA/hysteria.service https://raw.githubusercontent.com/joaquin1444/h/refs/heads/main/hysteria.service &>/dev/null ; then
+    if wget -O /etc/adm-lite/HYSTERIA/hysteria.service https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/PandaScript/hysteria.service &>/dev/null ; then
         chmod +x /etc/adm-lite/HYSTERIA/hysteria.service
         systemctl disable hysteria.service &>/dev/null
 
@@ -345,8 +345,8 @@ _login_2() {
     clear
     
     # URLs para desactivar y activar
-    local url_desactivar="https://raw.githubusercontent.com/joaquin1444/MOD-V6/main/script-v6/Otros/authSSH"
-    local url_activar="https://raw.githubusercontent.com/joaquin1444/h/main/authSSH"
+    local url_desactivar="https://raw.githubusercontent.com/karl1999x/PandaScript/main/PandaScript/Otros/authSSH"
+    local url_activar="https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/PandaScript/authSSH"
 
     # Verifica si el archivo ya existe y si su hash coincide
     if [[ -f /bin/authSSH && "$(md5sum /bin/authSSH | awk '{print $1}')" == "$(wget -qO- "$url_desactivar" | md5sum | awk '{print $1}')" ]]; then
