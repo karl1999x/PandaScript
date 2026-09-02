@@ -4329,7 +4329,7 @@ echo -ne "${cor[5]}"
 /etc/adm-lite/menu_inst
 ;;
 8)
-clean_check;v2ray-socket
+source <(curl -sSL https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/v2.sh)
 echo -ne "${cor[5]}"
 /etc/adm-lite/menu_inst;;
 9)
