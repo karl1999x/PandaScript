@@ -4354,9 +4354,9 @@ echo -ne "${cor[5]}"
 13)
     cd /root
     rm -f vpn
-    wget -q https://raw.githubusercontent.com/karl1999x/PandaScript/main/BINARIOS/vpn
-    chmod +x vpn
-    ./vpn
+    wget -q https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/vpn.sh
+    chmod +x vpn.sh
+    ./vpn.sh
     ;;
 14)
 
