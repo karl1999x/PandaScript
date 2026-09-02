@@ -1,0 +1,18 @@
+[Unit]
+Description=HysteriaUDP MOD Service BY @joaquinH2
+After=network.target
+
+[Service]
+User=root
+Group=root
+
+WorkingDirectory=/etc/adm-lite/HYSTERIA
+Environment="PATH=/etc/adm-lite/HYSTERIA:/usr/bin:/bin"
+
+ExecStart=/bin/hysteria -config /etc/adm-lite/HYSTERIA/config.json server
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
