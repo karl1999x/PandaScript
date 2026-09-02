@@ -1,5 +1,13 @@
 #!/bin/bash
+
+_Key='/etc/cghkey'
+
 clear
+
+[[ ! -e ${_Key} ]] && exit 
+
+#Modificado el 06-04-2023
+
 dir_user="/userDIR"
 dir="/etc/adm-lite"
 
@@ -34,17 +42,19 @@ echo -e "${cor[5]}Carga Exitosa!"
 echo -e "$barra"
 read -p "PRESIONE ENTER"
 }
-echo -e "\033[1;33mMenu de Respaldos de Usuarios\033[1;30m"
- msg -bar
- echo -e "\033[1;32m1) \033[1;37mCrear respaldo de Usuarios Online"
- msg -bar
- echo -e "\033[1;32m2) \033[1;37mRestaurar Usuarios de un backup Online"
- msg -bar
- echo -e "\033[1;32m3) \033[1;37m RESTAURAR FILE LOCAL"
- msg -bar
+
+
+echo -e "\033[1;33mMenu de Respaldos de Usuarios\033[1;30m
+ ----------------------------------
+ \033[1;32m1) \033[1;37mCrear respaldo de Usuarios Online
+ ----------------------------------
+ \033[1;32m2) \033[1;37mRestaurar Usuarios de un backup Online
+ ----------------------------------
+ \033[1;32m3) \033[1;37m RESTAURAR FILE LOCAL
+ ----------------------------------"
 read -p "ECOJE: " option
 function backup_de_usuarios(){
-msg -bar
+echo -e "--------------------------------------------------------"
 read -p "Ingrese Nombre de su Fichero o pulse ENTER: " name
 bc="$HOME/$name"
 arquivo_move="$name"
@@ -53,6 +63,7 @@ i=1
 [[ -e $bc ]] && rm $bc
 echo -e "\033[1;37mHaciendo Backup de Usuarios...\033[0m"
 [[ -e /bin/ejecutar/token ]] && passTK=$(cat < /bin/ejecutar/token)
+#for user in `awk -F : '$3 > 900 { print $1 }' /etc/passwd |grep -v "nobody" |grep -vi polkitd |grep -vi systemd-[a-z] |grep -vi systemd-[0-9] |sort`
 for user in `cat "/etc/passwd"|grep 'home'|grep 'false'|grep -v 'syslog' | cut -d: -f1 |sort`
 do
 if [ -e $dir$dir_user/$user ]
@@ -93,6 +104,7 @@ cd $HOME
 echo "INGRESE LINK Que Mantienes Online en GitHub, o VPS " 
 read -p "Pega tu Link : " url1
 wget -q -O recovery $url1 && echo -e "\033[1;31m- \033[1;32mFile Exito!" || echo -e "\033[1;31m- \033[1;31mFile Fallo"
+#echo -n "Escriba el directorio del archivo Backup: "
 echo -e "\033[1;37mRestaurando Usuarios...\033[0m"
 [[ -e $HOME/recovery ]] && arq="$HOME/recovery" || return 	
 for user in `cat $arq`
@@ -136,6 +148,7 @@ echo "$user" |cut -d: -f3 1> /dev/null 2>/dev/null
 fi
 done
 }
+
 _resLOC () {
 
 cd $HOME
@@ -191,6 +204,8 @@ echo "$user" |cut -d: -f3 1> /dev/null 2>/dev/null
   fi
 fi
 done
+
+
 }
 
 if [ $option -eq 1 ]; then
@@ -198,16 +213,15 @@ _SFTP="$(lsof -V -i tcp -P -n | grep -v "ESTABLISHED" |grep -v "COMMAND" | grep 
 portFTP=$(echo -e "$_SFTP" |cut -d: -f2 | cut -d' ' -f1 | uniq)
 portFTP=$(echo ${portFTP} | sed 's/\s\+/,/g' | cut -d , -f1)
 backup_de_usuarios
-msg -bar
+echo -e "-------------------------------------------------------"
 echo -e "		\033[4;31mNOTA importante\033[0m"
 echo -e "Recuerda Ir a GitHub y cargarlo Online, para luego poder Restaurarlo!!"
-msg -bar
+echo -e "-------------------------------------------------------"
 echo -e " \033[0;31mSi esta usando maquina, Montalo Online"
 echo -e "  Para luego usar el Link del Fichero, y puedas ."
 echo -e " Descargarlo desde cualquier sitio con acceso WEB"
 echo -e "    Ejemplo : http://ip-del-vps:${portFTP}/tu-fichero.\033[0m"
-echo -e "\033[1;31mHabilita el puerto 81 en el firewall en caso de que no esté activo\033[0m"
-msg -bar
+echo -e "-------------------------------------------------------"
 read -p "PRESIONA ENTER PARA CARGAR ONLINE"
 [[ -z $portFTP ]] && echo -e "SERVICIO FTP NO ACTIVO " || removeonline
 fi

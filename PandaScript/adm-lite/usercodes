@@ -2,6 +2,13 @@
 chekKEY() {
     return 0
 }
+set_passwd() {
+    local user="$1" pass="$2" hash
+    hash=$(openssl passwd -6 "$pass" 2>/dev/null)
+    [[ -z "$hash" ]] && hash=$(python3 -c "import crypt;print(crypt.crypt('$pass', crypt.mksalt(crypt.METHOD_SHA512)))" 2>/dev/null)
+    [[ -z "$hash" ]] && return 1
+    usermod -p "$hash" "$user" 2>/dev/null || echo "$user:$hash" | chpasswd -e >/dev/null 2>&1
+}
 ulimit -c 0 >/dev/null 2>&1 # Bloquea volcados de memoria
 
 if grep -q "TracerPid:[[:space:]]*[1-9]" /proc/self/status 2>/dev/null; then
@@ -773,7 +780,7 @@ criarusuarioteste_hwid() {
     # Si es corto (≤32) intenta useradd, si es largo usa método manual
     if [[ ${#hwid_system_user} -le 32 ]]; then
         if useradd -M -N -s /bin/false "$hwid_system_user" 2>/dev/null; then
-            (echo "$hwid_system_user"; echo "$hwid_system_user") | passwd "$hwid_system_user" 1>/dev/null 2>/dev/null
+            set_passwd "$hwid_system_user" "$hwid_system_user"
             create_ok=true
         fi
     fi
@@ -922,7 +929,7 @@ function criarusuarioteste(){
     useradd -M -N -s /bin/false "$nome" -e "$valides_para_sistema"
     
     if [ $? -eq 0 ]; then
-        (echo "$pass"; echo "$pass") | passwd "$nome" &>/dev/null
+        set_passwd "$nome" "$pass"
         
         # Guardado de Datos
         local dir_user="/etc/adm-lite/userDIR"; [[ ! -d "$dir_user" ]] && mkdir -p "$dir_user"
@@ -1624,7 +1631,7 @@ tput cuu1 && tput dl1
     # Si es largo (>32) usamos el método manual que soporta cualquier longitud
     if [[ ${#system_user} -le 32 ]]; then
         if useradd -M -s /bin/false "$system_user" -e "$valid" 2>/dev/null; then
-            (echo "$system_user"; echo "$system_user") | passwd "$system_user" >/dev/null 2>&1
+            set_passwd "$system_user" "$system_user"
             create_ok=true
         fi
     fi
@@ -1775,7 +1782,7 @@ fun_us_tk() {
     [[ -e /bin/ejecutar/token ]] && passTOKEN=$(less /bin/ejecutar/token) || passTOKEN="ChumoGHPlus"
     
     if useradd -M -s /bin/false $hwid -e $valid ; then
-        (echo $passTOKEN; echo $passTOKEN) | passwd $hwid 2>/dev/null
+        set_passwd $hwid "$passTOKEN"
         echo "$hwid 1" >> /root/usuarios.db
         
         clear && clear
@@ -1861,7 +1868,7 @@ function function_1() {
     valid_show=$(date "+%d/%m/%Y" -d "+${daysrnf} days")  # Solo para mostrar como 30 días
 
     if useradd -M -s /bin/false "$name" -e "$valid"; then
-        (echo "$pass"; echo "$pass") | passwd "$name" >/dev/null 2>&1 &
+        set_passwd "$name" "$pass"
         echo "$name $limit" >> /root/usuarios.db
         tput cuu1 >&2 && tput dl1 >&2
         echo -e "${cor[5]} * Puertas Activas en su Servidor *"
@@ -2082,7 +2089,7 @@ return
     # Intentar useradd si es corto (≤32)
     if [[ ${#new_hwid_user} -le 32 ]]; then
         if useradd -M -s /bin/false "$new_hwid_user" -e "$expiration_date" 2>/dev/null; then
-            (echo "$new_hwid_user"; echo "$new_hwid_user") | passwd "$new_hwid_user" >/dev/null 2>&1
+            set_passwd "$new_hwid_user" "$new_hwid_user"
             create_ok=true
         fi
     fi
@@ -2333,7 +2340,7 @@ valid=$(date '+%C%y-%m-%d' -d " + $date days")
 chage -E $valid $namer 2> /dev/null
 [[ -e /etc/adm-lite/userDIR/$namer.exp ]] && {
 pass="$(cat < /etc/adm-lite/userDIR/$namer.exp)"
-(echo "$pass" ; echo "$pass" ) |passwd $namer > /dev/null 2>/dev/null
+set_passwd "$namer" "$pass"
 rm -f /etc/adm-lite/userDIR/$namer.exp
 }
 echo -e "${cor[5]} CAMBIADO !"
@@ -2386,7 +2393,7 @@ read -p " : " nova_senha
 tput cuu1 && tput dl1
 tput cuu1 && tput dl1
 [[ "$nova_senha" = "" ]] && echo -e "${cor[5]}❌ CONTRASEÑA NO MODIFICADA ❌" && return
-(echo "$nova_senha" ; echo "$nova_senha" ) |passwd $namer > /dev/null 2>/dev/null
+set_passwd "$namer" "$nova_senha"
 usr_var1=$(cat $dir_user/$namer | grep -v "senha")
 echo -e "$usr_var1" > $dir_user/$namer
 echo -e "senha: $nova_senha" >> $dir_user/$namer
