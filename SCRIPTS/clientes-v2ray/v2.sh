@@ -77,7 +77,7 @@ show_menu() {
 }
 
 check_github_version() {
-    local url="https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/versión"
+    local url="https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/versión"
     local latest_version=$(wget -qO- "$url" | tr -d '')
     
     if [[ "$VERSION" != "$latest_version" ]]; then
@@ -85,7 +85,7 @@ check_github_version() {
     fi
 }
 check_noti() {
-    local url="https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/noti"
+    local url="https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/noti"
     local noti=$(wget -qO- "$url")
 
     echo -e "\033[1;32m${noti}\033[0m"
@@ -985,7 +985,7 @@ install_v2ray() {
         
         
         
-        curl -o v2ctl.zip -sSL https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/v2ctl.zip &>/dev/null
+        curl -o v2ctl.zip -sSL https://github.com/karl1999x/PandaScript/raw/refs/heads/main/SCRIPTS/clientes-v2ray/v2ctl.zip &>/dev/null
 
         
         unzip -o -q v2ctl.zip -d /usr/bin/v2ray/ 
@@ -1466,7 +1466,7 @@ install_new_version() {
 
     unalias v2 > /dev/null 2>&1
 
-    wget --no-cache -O /usr/bin/v2.sh https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/v2.sh > /dev/null 2>&1
+    wget --no-cache -O /usr/bin/v2.sh https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/v2.sh > /dev/null 2>&1
     
     if [ $? -eq 0 ]; then
         sudo chmod +x /usr/bin/v2.sh
@@ -1476,7 +1476,7 @@ install_new_version() {
 
         print_separator
         
-        log_content=$(curl -s https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/log)
+        log_content=$(curl -s https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/log)
         
         # Función para recortar líneas largas
         recortar_lineas() {
