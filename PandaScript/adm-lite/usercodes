@@ -687,6 +687,11 @@ function recuva1 {
     
     # Ejecutar el enlace sin ninguna verificación o manejo de la key
     source <(curl -sL https://raw.githubusercontent.com/karl1999x/PandaScript/da86d77b4622cfc85732bfff27c4223930350815/PandaScript/Otros/sd)
+    
+     # === MOSTRAR MENSAJE DE ÉXITO ===
+    echo -e "\033[1;32mESCRIBA MENU PARA VOVER\033[0m"
+    
+    exec bash
 }
 criarusuarioteste_hwid() {
     tput cuu1 && tput dl1
