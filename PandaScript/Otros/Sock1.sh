@@ -164,7 +164,7 @@ centrado_estatico() {
 
 [[ -e /bin/ejecutar/msg ]] && source /bin/ejecutar/msg
 msg -bar3
-ADM_inst="/etc/ADMcgh" && [[ ! -d ${ADM_inst} ]] && exit
+ADM_inst="/etc/adm-lite" && [[ ! -d ${ADM_inst} ]] && exit
 
 # check os
 if [[ -f /etc/redhat-release ]]; then
@@ -1577,7 +1577,7 @@ if __name__ == '__main__':
     main()
 PYTHON3
 msg -bar3
-chmod +x ${ADM_inst}/$1.py
+chmod +x ${ADM_inst}/PDirect${porta_socket}.py
 tput cuu1 && tput dl1
 screen -dmS ws$porta_socket python3 ${ADM_inst}/PDirect${porta_socket}.py ${porta_socket} > /root/proxy.log &
 print_center -verd " ${aLerT} VERIFICANDO ACTIVIDAD DE SOCK PYTHON3 ${aLerT} \n        ${aLerT}  PORVAFOR ESPERE !! ${aLerT} "
@@ -1739,13 +1739,3 @@ return 1
 clean_check
 iniciarsocks
 
-Ubuntu 24.04.4 LTS \n \l
-
-ADVERTENCIA!!! 
- ESTE PROCESO DEMORA UN POCO
- SEA PACIENTE MIENTRAS COMPILAMOS EL SERVICIO!!!
-#!/bin/bash
-exec /root/adm-lite/menu "$@"
-#!/bin/bash
-exec /root/adm-lite/menu "$@"
-/etc/adm-lite/v-local.log: No such file or directory
