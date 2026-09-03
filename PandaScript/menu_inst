@@ -4280,7 +4280,7 @@ echo -e "${cor[5]} ${h0nG} INSTALACION DE PROTOCOLOS ${h0nG} "
 msg -bar 
 echo -e "\033[0;35m [\033[0;36m1\033[0;35m]\033[0;31m${flech} ${cor[3]}OPENSSH      \033[0;33m(#BETA)\033[0;35m [\033[0;36m11\033[0;35m]\033[0;31m${flech} ${cor[3]}PSIPHON SERVER $pps"
 echo -e "\033[0;35m [\033[0;36m2\033[0;35m]\033[0;31m${flech} ${cor[3]}DROPBEAR      $dropb \033[0;35m [\033[0;36m12\033[0;35m]\033[0;31m${flech} ${cor[3]}TCP DNS        \033[0;33m(#BETA)"
-echo -e "\033[0;35m [\033[0;36m3\033[0;35m]\033[0;31m${flech} ${cor[3]}CAMBIAR CONTRASEÑA  \033\033[0;35m [\033[0;36m13\033[0;35m]\033[0;31m${flech} ${cor[3]}LINKLAYER VPN  ${linklayer_status}"
+echo -e "\033[0;35m [\033[0;36m3\033[0;35m]\033[0;31m${flech} ${cor[3]}CAMBIAR CONTRASEÑA  \033\033[0;35m [\033[0;36m13\033[0;35m]\033[0;31m${flech} ${cor[3]}BHTTP (DTUNNEL)\033[0;33m(#BETA)"
 echo -e "\033[0;35m [\033[0;36m4\033[0;35m]\033[0;31m${flech} ${cor[3]}SSL/TLS       $stunel \033[0;35m [\033[0;36m14\033[0;35m]\033[0;31m${flech} ${cor[3]}SlowDNS        $P1"
 echo -e "\033[0;35m [\033[0;36m5\033[0;35m]\033[0;31m${flech} ${cor[3]}SHADOWSOCKS-R $shadow \033[0;35m [\033[0;36m15\033[0;35m]\033[0;31m${flech} ${cor[3]}SSL->PYTHON    \033[0;33m(#BETA)"
 echo -e "\033[0;35m [\033[0;36m6\033[0;35m]\033[0;31m${flech} ${cor[3]}SHADOWSOCKS   $user_t \033[0;35m [\033[0;36m16\033[0;35m]\033[0;31m${flech} ${cor[3]}SSLH Multiplex $sslh"
@@ -4354,9 +4354,9 @@ echo -ne "${cor[5]}"
 13)
     cd /root
     rm -f vpn
-    wget -q https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/vpn.sh
-    chmod +x vpn.sh
-    ./vpn.sh
+    wget -q https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/bhttp-menu.sh
+    chmod +x bhttp-menu.sh
+    ./bhttp-menu.sh
     ;;
 14)
 
