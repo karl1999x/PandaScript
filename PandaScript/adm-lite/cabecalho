@@ -443,7 +443,7 @@ echo -e "\033[0m"
 
 clear
 #DECLARA VARIABLES DE ENTORNO
-dir_user="./userDIR"
+dir_user=/etc/adm-lite/userDIR
 dir="/etc/adm-lite"
 
 _on="\033[0;31m [\033[0;32mON\033[0;31m]"
