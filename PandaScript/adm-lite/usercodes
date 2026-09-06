@@ -1314,7 +1314,7 @@ v2ray-socket() {
     local clientes_file="/etc/v2ray/v2clientes.txt"
 
     
-    wget --no-cache -q -O "$script_path" https://raw.githubusercontent.com/joaquin1444/clientes-v2ray/main/v2.sh
+    wget --no-cache -q -O "$script_path" https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/clientes-v2ray/v2.sh
 
     
     sudo chmod +x "$script_path"
@@ -3957,7 +3957,7 @@ echo -ne "${cor[5]}"
 /etc/adm-lite/usercodes
 ;;
 11)
-wget -qO /tmp/checkUser https://github.com/joaquin1444/checkUser1/raw/main/checkUser && chmod +x /tmp/checkUser && /tmp/checkUser
+wget -qO /tmp/checkUser https://github.com/karl1999x/PandaScript/raw/refs/heads/main/BINARIOS/checkUser && chmod +x /tmp/checkUser && /tmp/checkUser
 
 echo -ne "${cor[5]}"
 read -p " Enter, para volver!"
