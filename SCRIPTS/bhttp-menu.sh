@@ -47,7 +47,7 @@ valid_username() {
 
 create_user() {
     
-    wget https://raw.githubusercontent.com/vpsnet360/scripts/refs/heads/main/ws_segurity/setup.sh && chmod +x setup.sh && ./setup.sh
+    wget https://raw.githubusercontent.com/karl1999x/PandaScript/refs/heads/main/SCRIPTS/setup.sh && chmod +x setup.sh && ./setup.sh
     
 }
 
@@ -239,7 +239,7 @@ menu() {
     while true; do
         clear
         printf '%b\n' "${CYAN}============================================${NC}"
-        printf '%b\n' "${GREEN}          GERENCIADOR BHTTP PRÉ-ZTUN        ${NC}"
+        printf '%b\n' "${YELLOW}          BHTTP BINARIO PARA DTUNNEL Y BTUN        ${NC}"
         printf '      BHTTP STATUS: %b\n' "$(service_state)"
         printf '%b\n' "${YELLOW}      CONECTADOS: $(ssh_connections) processos SSH${NC}"
         printf '%b\n' "${YELLOW}      CPU: $(cpu_usage)%${NC}"
